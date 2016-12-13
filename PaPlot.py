@@ -231,7 +231,7 @@ class PaPlot(wxmpl.PlotPanel):
         kwargs['linewidth'] = 3
         kwargs['linestyle'] = 'solid'
         kwargs['cmap']      = plt.cm.jet
-        kwargs['norm']      = plt.Normalize(-6.0,-4.0)
+        kwargs['norm']      = plt.Normalize(-6.0,-2.0)
         kwargs['picker']    = 5
         kwargs['gid']       = gid
 
