@@ -27,13 +27,13 @@ from Cython.Build import cythonize
 #import datetime
 
 extensions = [
-    Extension('PaBeau',
-        ['PaBeau.py'],
+    Extension('PaBeau-v0',
+        ['PaBeau-v0.py'],
         include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
         )
 ]
 
 setup(
-    name = 'PaBeau',
+    name = 'PaBeau-v0',
     ext_modules = cythonize(extensions),
 )

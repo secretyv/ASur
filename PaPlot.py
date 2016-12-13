@@ -4,14 +4,24 @@
 # --- Copyright (c) INRS 2016
 # --- Institut National de la Recherche Scientifique (INRS)
 # ---
-# --- Distributed under the GNU Lesser General Public License, Version 3.0.
-# --- See accompanying file LICENSE.txt.
+# --- Licensed under the Apache License, Version 2.0 (the "License");
+# --- you may not use this file except in compliance with the License.
+# --- You may obtain a copy of the License at
+# ---
+# ---     http://www.apache.org/licenses/LICENSE-2.0
+# ---
+# --- Unless required by applicable law or agreed to in writing, software
+# --- distributed under the License is distributed on an "AS IS" BASIS,
+# --- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# --- See the License for the specific language governing permissions and
+# --- limitations under the License.
 #************************************************************************
 
 """
+Plot 
 """
 
-__version__ = '1.0.rc2'
+__version__ = '1.0'
 
 import datetime
 import time
@@ -221,7 +231,7 @@ class PaPlot(wxmpl.PlotPanel):
         kwargs['linewidth'] = 3
         kwargs['linestyle'] = 'solid'
         kwargs['cmap']      = plt.cm.jet
-        kwargs['norm']      = plt.Normalize(-4.0, 0.0)
+        kwargs['norm']      = plt.Normalize(-6.0,-4.0)
         kwargs['picker']    = 5
         kwargs['gid']       = gid
 
@@ -322,7 +332,7 @@ class PaPlot(wxmpl.PlotPanel):
         kwargs['anchor']   = (0.0, 0.40)
         kwargs['extend']   = 'both'
         kwargs['format']   = '$10^{%i}$'
-        kwargs['ticks']    = [-4, -3, -2, -1, 0]
+        kwargs['ticks']    = [-6, -5, -4, -3, -2]
         #kwargs['drawedges']= True
         cbar = self.figure.colorbar(self.CS[0], **kwargs)
         kwargs = {}

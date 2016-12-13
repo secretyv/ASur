@@ -5,6 +5,5 @@ call clean.bat
 call compile.bat
 
 :: ---  Installe
-call install-all.bat
-copy dist\Pa2Beau\*.* dist\PaBeau
+call install-PaBeau.bat
 pause
