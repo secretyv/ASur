@@ -42,7 +42,7 @@ import dateutil.parser
 # http://stackoverflow.com/questions/21296475/python-dateutil-unicode-warning
 warnings.filterwarnings("ignore", category=UnicodeWarning)
 
-logger = logging.getLogger("INRS.BBModel.tide")
+logger = logging.getLogger("INRS.ASModel.tide")
 
 def nint(d):
     return int(d + 0.5)
@@ -383,7 +383,7 @@ if __name__ == '__main__':
     FORMAT = "%(asctime)s %(levelname)s %(message)s"
     logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    logger = logging.getLogger("INRS.BBModel.tide")
+    logger = logging.getLogger("INRS.ASModel.tide")
     logger.addHandler(logHndlr)
     logger.setLevel(logging.DEBUG)
 

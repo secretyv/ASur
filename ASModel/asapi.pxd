@@ -8,7 +8,7 @@
 import cython
 cimport datetime
 
-@cython.locals (s_bbModel = object)
+@cython.locals (s_asModel = object)
 cpdef              init            (unicode dataDir)
 
 cpdef unicode      getDataDir      ()

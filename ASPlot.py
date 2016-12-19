@@ -36,8 +36,8 @@ from matplotlib import dates as mpldt
 from matplotlib import ticker as mpltk
 import mpldatacursor
 
-import BBModel
-from BBModel import DTA_DELTAT
+import ASModel
+from ASModel import DTA_DELTAT
 
 LOCAL_TZ   = tzlocal.get_localzone()
 DSP_DELTAS = 300
@@ -112,7 +112,7 @@ class DADataCursor(mpldatacursor.DataCursor):
             self.cb_msg( (t, y) )
 
 
-class PaPlot(wxmpl.PlotPanel):
+class ASPlot(wxmpl.PlotPanel):
     def __init__(self, *args, **kwargs):
         self.cb_msg  = kwargs.pop("messenger", None)
         self.cb_dclk = kwargs.pop("on_dclick", None)
@@ -122,7 +122,7 @@ class PaPlot(wxmpl.PlotPanel):
         self.axes = None
         self.DC   = []
         self.CS   = []
-        self.bbModel = None
+        self.asurMdl = None
         self.status_onZoom = False
 
         self.get_figure().canvas.mpl_connect('pick_event', self._onPick)
@@ -207,7 +207,7 @@ class PaPlot(wxmpl.PlotPanel):
         Returns the data bounding box
         """
         # ---  Plot data
-        tide = self.bbModel.getTideSignal(dtmin-DTA_DELTAT, dtmax+DTA_DELTAT, DTA_DELTAT)
+        tide = self.asurMdl.getTideSignal(dtmin-DTA_DELTAT, dtmax+DTA_DELTAT, DTA_DELTAT)
         tideX = [ dt for dt,wl in tide ]
         tideY = [ wl for dt,wl in tide ]
 
@@ -355,19 +355,19 @@ class PaPlot(wxmpl.PlotPanel):
         kwargs['fontsize']  = FONT_SIZE
         self.axes.legend(**kwargs)
 
-    def plotAll(self, bbModel, data, dtini, dtfin, dtmax, title = u''):
+    def plotAll(self, asurMdl, data, dtini, dtfin, dtmax, title = u''):
         mpl.rcParams['timezone'] = 'UTC'
         self.status_onzoom = False
         
         # ---  Plot the data
-        self.bbModel = bbModel
+        self.asurMdl = asurMdl
         self.__plotClearPlot()
         bboxTide = self.__plotTide(dtini, dtmax)
         self.__plotPoints(data, dtini, dtmax, bboxTide)
         self.__plotLimits(data, dtini, dtfin)
         self.__plotColorBar()
         self.__plotLegend()
-        self.bbModel = None
+        self.asurMdl = None
 
         # ---  Finalize plot setup
         #self.axes.set_autoscale_on(False)
@@ -395,19 +395,19 @@ class PaPlot(wxmpl.PlotPanel):
 
         self.draw()
 
-    def plotZoom(self, bbModel, data, dtini, dtfin, dtmax, title = u''):
+    def plotZoom(self, asurMdl, data, dtini, dtfin, dtmax, title = u''):
         mpl.rcParams['timezone'] = 'UTC'
         self.status_onzoom = True
 
         # ---  Plot the data
-        self.bbModel = bbModel
+        self.asurMdl = asurMdl
         self.__plotClearPlot()
         bboxTide = self.__plotTide(dtini, dtmax)
         self.__plotOnePointZoom(data, dtini, dtmax, bboxTide)
         self.__plotLimits(data, dtini, dtfin)
         self.__plotColorBar()
         self.__plotLegend()
-        self.bbModel = None
+        self.asurMdl = None
 
         # ---  Adjust axis param
         self.axes.tick_params(axis='both', which='major', labelsize=FONT_SIZE)
@@ -434,7 +434,7 @@ if __name__ == "__main__":
     import wx
     app = wx.PySimpleApp()
     fr = wx.Frame(None, title='test')
-    panel = PaPlot(fr, wx.ID_ANY)
+    panel = ASPlot(fr, wx.ID_ANY)
     panel.draw()
     fr.Show()
     app.MainLoop()

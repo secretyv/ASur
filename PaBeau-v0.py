@@ -42,7 +42,7 @@ import wx.lib.agw.hypertreelist as HTL
 
 import PaPlot
 import PaParam
-import BBModel
+import ASModel
 
 #--- Help provider
 provider = wx.SimpleHelpProvider()
@@ -181,7 +181,7 @@ class PaBeau(wx.Frame):
         #FORMAT = "%(asctime)s %(levelname)s %(message)s"
         #logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-        #logger = logging.getLogger("INRS.BBModel.station")
+        #logger = logging.getLogger("INRS.ASModel.station")
         #logger.addHandler(logHndlr)
         #logger.setLevel(logging.DEBUG)
 
@@ -493,7 +493,7 @@ class PaBeau(wx.Frame):
 
     def __do_mnu_open(self, dirname):
         # ---  Construct model
-        self.bbModel = BBModel.BBModel(dirname)
+        self.bbModel = ASModel.ASModel(dirname)
         # ---  Fill activ cycles list
         self.bbCycles = self.__getAllActivCycles()
         # ---  Fill list
@@ -665,7 +665,7 @@ if __name__ == "__main__":
         FORMAT = "%(asctime)s %(levelname)s %(message)s"
         logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-        logger = logging.getLogger("INRS.BBModel")
+        logger = logging.getLogger("INRS.ASModel")
         logger.addHandler(logHndlr)
         logger.setLevel(logging.INFO)
 

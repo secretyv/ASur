@@ -26,9 +26,9 @@ Boite de dialog de choix des marées
 
 import wx
 
-class PaParam(wx.Dialog):
+class ASParam(wx.Dialog):
     def __init__(self, *args, **kwds):
-        # begin wxGlade: PaParam.__init__
+        # begin wxGlade: ASParam.__init__
         kwds["style"] = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         wx.Dialog.__init__(self, *args, **kwds)
         self.chk_lst  = wx.CheckListBox(self, wx.ID_ANY, style=wx.LB_EXTENDED)
@@ -43,13 +43,13 @@ class PaParam(wx.Dialog):
         # end wxGlade
 
     def __set_properties(self):
-        # begin wxGlade: PaParam.__set_properties
+        # begin wxGlade: ASParam.__set_properties
         self.SetTitle(u"Paramètres")
         self.SetSize((400, 300))
         # end wxGlade
 
     def __do_layout(self):
-        # begin wxGlade: PaParam.__do_layout
+        # begin wxGlade: ASParam.__do_layout
         szr_main = wx.BoxSizer(wx.VERTICAL)
         szr_btn  = wx.BoxSizer(wx.HORIZONTAL)
         szr_main.Add(self.chk_lst, 4, wx.EXPAND, 0)
@@ -80,14 +80,14 @@ class PaParam(wx.Dialog):
     def on_btn_cancel(self, event):
         self.Destroy()
 
-# end of class PaParam
+# end of class ASParam
 
 
 if __name__ == "__main__":
     import wx
     app = wx.PySimpleApp()
     fr = wx.Frame(None, title='test')
-    panel = PaParam(fr)
+    panel = ASParam(fr)
     panel.setItems([ str(i) for i in range(20) ])
     panel.ShowModal()
     fr.Show()

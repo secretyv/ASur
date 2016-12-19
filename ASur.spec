@@ -8,19 +8,19 @@ block_cipher = None
 
 ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\PaBeau'
 
-BBCmp = ['tide', 'river', 'station', 'bbclass', 'bbapi', '__init__']
-BBModel_hiddenimports = [ 'BBModel.'+c for c in BBCmp[0:5] ]
-#BBModel_data          = [ (r'BBModel\BBData', 'BBData'), (r'lgpl-3.0.txt', '.') ]
-BBModel_data          = [ (r'LICENSE', '.') ]
+ASCmp = ['tide', 'river', 'station', 'asclass', 'asapi', '__init__']
+ASModel_hiddenimports = [ 'ASModel.'+c for c in ASCmp[0:5] ]
+#ASModel_data          = [ (r'ASModel\BBData', 'BBData'), (r'LICENSE', '.') ]
+ASModel_data          = [ (r'LICENSE', '.') ]
 
 python_hiddenimports = [ 'tzlocal', 'numpy', 'matplotlib', 'FileDialog', 'mpldatacursor', 'wxmpl', 'mechanize', 'appdirs', 'packaging' ]
 python_hiddenimports += collect_submodules('pkg_resources._vendor')
 
-pb2_a = Analysis(['PaBeau.py'],
-             pathex  = [os.path.join(ROOTDIR, 'BBModel')],
+pb2_a = Analysis(['ASur.py'],
+             pathex  = [os.path.join(ROOTDIR, 'ASModel')],
              binaries       = [],
-             datas          = BBModel_data,
-             hiddenimports  = BBModel_hiddenimports + python_hiddenimports,
+             datas          = ASModel_data,
+             hiddenimports  = ASModel_hiddenimports + python_hiddenimports,
              hookspath      = [],
              runtime_hooks  = [],
              excludes       = [],
@@ -35,7 +35,7 @@ pb2_pyz = PYZ(pb2_a.pure,
 pb2_exe = EXE(pb2_pyz,
               pb2_a.scripts,
               exclude_binaries=True,
-              name='PaBeau',
+              name='ASur',
               debug=False,
               strip=False,
               upx=True,
@@ -47,4 +47,4 @@ pb2_coll = COLLECT(pb2_exe,
               pb2_a.datas,
               strip=False,
               upx=True,
-              name='PaBeau')
+              name='ASur')

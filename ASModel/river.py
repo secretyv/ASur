@@ -27,7 +27,7 @@ import codecs
 import os
 import logging
 
-logger = logging.getLogger("INRS.BBModel.river")
+logger = logging.getLogger("INRS.ASModel.river")
 
 class River(object):
     def __init__(self, name = u'', velocity = []):
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     FORMAT = "%(asctime)s %(levelname)s %(message)s"
     logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    logger = logging.getLogger("INRS.BBModel.river")
+    logger = logging.getLogger("INRS.ASModel.river")
     logger.addHandler(logHndlr)
     logger.setLevel(logging.DEBUG)
 

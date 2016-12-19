@@ -25,13 +25,13 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-    Extension('PaParam',
-        ['PaParam.py'],
+    Extension('ASPlot',
+        ['ASPlot.py'],
         include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
         )
 ]
 
 setup(
-    name = 'PaParam',
+    name = 'ASPlot',
     ext_modules = cythonize(extensions),
 )

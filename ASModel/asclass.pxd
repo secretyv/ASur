@@ -11,18 +11,18 @@ cimport river
 cimport station
 cimport tide
 
-cdef class BBModel:
+cdef class ASModel:
     cdef public unicode      m_dataDir
     cdef public station.OverflowPoints m_points
     cdef public river.Rivers m_rivers
     cdef public tide.TideTable m_tide
     #
-    cpdef unicode      getDataDir      (BBModel self)
-    cpdef list         getInfo         (BBModel self)
-    cpdef list         getPointNames   (BBModel self)
-    cpdef list         getPointTideNames(BBModel self, unicode name)
+    cpdef unicode      getDataDir      (ASModel self)
+    cpdef list         getInfo         (ASModel self)
+    cpdef list         getPointNames   (ASModel self)
+    cpdef list         getPointTideNames(ASModel self, unicode name)
     @cython.locals (sgnl = list)
-    cpdef list         getTideSignal   (BBModel self, datetime.datetime t_start, datetime.datetime t_end, datetime.timedelta dt)
+    cpdef list         getTideSignal   (ASModel self, datetime.datetime t_start, datetime.datetime t_end, datetime.timedelta dt)
     @cython.locals (cycls = list, pt = unicode, r = list, res = list)
-    cpdef list         xeq             (BBModel self, datetime.datetime t_start, datetime.datetime t_end, datetime.timedelta dt, list pts, bint do_merge)
+    cpdef list         xeq             (ASModel self, datetime.datetime t_start, datetime.datetime t_end, datetime.timedelta dt, list pts, bint do_merge)
 

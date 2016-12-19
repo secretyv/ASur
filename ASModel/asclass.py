@@ -30,12 +30,12 @@ from river   import Rivers
 from station import OverflowPoints
 from tide    import TideTable
 
-logger = logging.getLogger("INRS.BBModel.BBModel")
+logger = logging.getLogger("INRS.ASModel.ASModel")
 
-class BBModel:
+class ASModel:
     def __init__(self, dataDir):
         """
-        La fonction __init__() construit un objet BBModel. Elle configure le système.
+        La fonction __init__() construit un objet ASModel. Elle configure le système.
         """
         self.m_rivers = Rivers()
         self.m_rivers.load(dataDir)
@@ -119,7 +119,7 @@ class BBModel:
                 r = self.m_points[pt].doOverflow(t_start, t_end, dt, self.m_tide, tide_cycles=cycls, merge_transit_times = do_merge)
                 res.append( (pt, r) )
             except KeyError as e:
-                logger.debug('BBModel.xeq: Skipping point %s' % pt)
+                logger.debug('ASModel.xeq: Skipping point %s' % pt)
         return res
 
 if __name__ == '__main__':
@@ -134,6 +134,6 @@ if __name__ == '__main__':
     t0 = datetime.datetime.now(tz=pytz.utc)
     t1 = t0 + datetime.timedelta(hours=1)
     dt = datetime.timedelta(seconds=900)
-    bb = BBModel()
+    mdl = ASModel()
     #xeq(t0, t1, dt, ['AFO-STL-002'])
-    bb.getTideSignal(t0, t1, dt)
+    mdl.getTideSignal(t0, t1, dt)

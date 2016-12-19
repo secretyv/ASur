@@ -16,6 +16,7 @@
 # --- See the License for the specific language governing permissions and
 # --- limitations under the License.
 #************************************************************************
+
 try:
     from setuptools import setup
     from setuptools import Extension
@@ -25,13 +26,13 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-    Extension('PaPlot',
-        ['PaPlot.py'],
+    Extension('asapi',
+        ['asapi.py'],
         include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
         )
 ]
 
 setup(
-    name = 'PaPlot',
+    name = 'asapi',
     ext_modules = cythonize(extensions),
 )

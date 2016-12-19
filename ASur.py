@@ -40,9 +40,9 @@ import wx.lib.masked   as mk
 import wx.lib.wordwrap as ww
 import wx.lib.agw.hypertreelist as HTL
 
-import PaPlot
-import PaParam
-import BBModel
+import ASPlot
+import ASParam
+import ASModel
 
 #--- Help provider
 provider = wx.SimpleHelpProvider()
@@ -53,10 +53,13 @@ GlbStates = enum.Enum('GlbStates', ('started', 'data_loaded'))
 GlbModes  = enum.Enum('GlbModes',  ('standard', 'expert'))
 
 hlpTxt = u"""
-Détermination de la fenêtre des temps d'arrivée d'une surverse à la plage de la Baie de Beauport
+Détermination de la fenêtre des temps d'arrivée d'une surverse
 
 Principe
 ======
+L'application permet de charger un ou plusieurs jeux de données qui décrivent la dynamique \
+des temps d'arrivée des surverses pour un site. 
+
 L'application permet de spécifier un scénario de surverse:
     - en sélectionnant un ou des points de surverse;
     - en spécifiant la plage horaire de la surverse.
@@ -64,17 +67,17 @@ La même plage horaire est appliquée à tous les points de surverse sélectionn
 Les temps sont spécifiés en heure locale.
 
 Pour chaque point de surverse le graphique montre une ou plusieurs \
-fenêtre de temps d'arrivée à la plage. Pour la période, il montre également une esquisse \
+fenêtre de temps d'arrivée au site choisi. Pour la période, il montre également une esquisse \
 du signal de marée qui est extrait des tables de marées du Pêches et Océan Canada.
 
 Pour chaque scénario de surverse, l'application va déterminer à partir de quand \
-la plage de la Baie de Beauport serait touchée. Elle donne donc les temps d'arrivée. \
-Elle ne détermine pas pendant combien de temps la plage sera affectée par la surverse.
+le site choisi sera touchée. Elle donne donc les temps d'arrivée. \
+Elle ne détermine pas pendant combien de temps le site sera affectée par la surverse.
 
-La qualité de l’eau à la plage peut continuer d’être d’affectée pendant une certaine période \
+La qualité de l’eau au site peut continuer d’être d’affectée pendant une certaine période \
 de temps après l'arrivée des surverses avant de retrouver une meilleur qualité par les effets combinés \
 de la dilution, du transport et de la dégradation des contaminants. On peut toutefois estimer \
-que la prochaine marée haute aura nettoyé la plage.
+que la prochaine marée haute aura nettoyé le site.
 
 L'application permet de charger plusieurs jeux de données et de les comparer.
 
@@ -95,7 +98,7 @@ avec la souris (click & drag). Le retour en arrière se fait en utilisant la bar
 """
 
 licTxt = u"""
-PaBeau  Version %s
+ASur  Version %s
 Copyright (c) INRS 2016
 Institut National de la Recherche Scientifique (INRS)
 
@@ -116,10 +119,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 See the License for the specific language governing permissions and limitations under the License.
 """ % __version__
 
-appName  = u"PaBeau"
-appTitle = u"Temps d'arrivée d'une surverse à la plage de la Baie de Beauport"
+appName  = u"ASur"
+appTitle = u"Arrivée d'une SURverse"
 
-class PaBeau(wx.Frame):
+class ASur(wx.Frame):
     CLC_DELTAS = 300
     CLC_DELTAT = datetime.timedelta(seconds=CLC_DELTAS)
 
@@ -147,11 +150,11 @@ class PaBeau(wx.Frame):
         self.ctl_dfin  = wx.DatePickerCtrl(self.ssh_rht, wx.ID_ANY, style=wx.DP_DROPDOWN)
         self.ctl_tfin  = mk.TimeCtrl      (self.ssh_rht, wx.ID_ANY, format='24HHMM')
         self.btn_apply = wx.Button        (self.ssh_rht, wx.ID_APPLY, u'Affiche')
-        self.pnl_wx    = PaPlot.PaPlot    (self.ssh_rht, wx.ID_ANY, messenger=self.cb_panel, on_dclick=self.on_data_dclick)
+        self.pnl_wx    = ASPlot.ASPlot    (self.ssh_rht, wx.ID_ANY, messenger=self.cb_panel, on_dclick=self.on_data_dclick)
         self.statusbar = self.CreateStatusBar(2)
 
-        self.histCfg = wx.Config('PaBeau - File history', style=wx.CONFIG_USE_LOCAL_FILE)
-        self.prmsCfg = wx.Config('PaBeau - Parameters',   style=wx.CONFIG_USE_LOCAL_FILE)
+        self.histCfg = wx.Config('ASur - File history', style=wx.CONFIG_USE_LOCAL_FILE)
+        self.prmsCfg = wx.Config('ASur - Parameters',   style=wx.CONFIG_USE_LOCAL_FILE)
 
         self.__create_menu_bar()
         self.__set_properties()
@@ -194,7 +197,7 @@ class PaBeau(wx.Frame):
         #FORMAT = "%(asctime)s %(levelname)s %(message)s"
         #logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-        #logger = logging.getLogger("INRS.BBModel.station")
+        #logger = logging.getLogger("INRS.ASModel.station")
         #logger.addHandler(logHndlr)
         #logger.setLevel(logging.DEBUG)
 
@@ -403,7 +406,7 @@ class PaBeau(wx.Frame):
         d  = self.ctl_dini.GetValue()
         t  = self.ctl_tini.GetValue().split(':')
         dt = datetime.datetime(d.Year, d.Month+1, d.Day, int(t[0]), int(t[1]))
-        dt = PaPlot.LOCAL_TZ.localize(dt)
+        dt = ASPlot.LOCAL_TZ.localize(dt)
         dt = dt.astimezone(pytz.utc)
         return dt
 
@@ -414,7 +417,7 @@ class PaBeau(wx.Frame):
         d  = self.ctl_dfin.GetValue()
         t  = self.ctl_tfin.GetValue().split(':')
         dt = datetime.datetime(d.Year, d.Month+1, d.Day, int(t[0]), int(t[1]))
-        dt = PaPlot.LOCAL_TZ.localize(dt)
+        dt = ASPlot.LOCAL_TZ.localize(dt)
         dt = dt.astimezone(pytz.utc)
         return dt
 
@@ -451,7 +454,7 @@ class PaBeau(wx.Frame):
         """
         Compute the global arrival time windows
         """
-        res = bbModel.xeq(dtini, dtfin, PaBeau.CLC_DELTAT, pts, do_merge)
+        res = bbModel.xeq(dtini, dtfin, ASur.CLC_DELTAT, pts, do_merge)
         dtmax = dtfin
         for pt, dtaPt in res:
             for dtaTr in dtaPt:
@@ -469,7 +472,7 @@ class PaBeau(wx.Frame):
         res = []
         point, tides = pts
         for t in tides:
-            r = bbModel.xeq(dtini, dtfin, PaBeau.CLC_DELTAT, [ [point, [t]] ], do_merge)
+            r = bbModel.xeq(dtini, dtfin, ASur.CLC_DELTAT, [ [point, [t]] ], do_merge)
             res.extend(r)
         dtmax = dtfin
         for pt, dtaPt in res:
@@ -585,8 +588,8 @@ class PaBeau(wx.Frame):
             if dirname == bbModel.getDataDir():
                 return
         # ---  Construct model
-        self.bbModels.append( BBModel.BBModel(dirname) )
-        self.bbModels.sort(key = BBModel.BBModel.getDataDir)
+        self.bbModels.append( ASModel.ASModel(dirname) )
+        self.bbModels.sort(key = ASModel.ASModel.getDataDir)
         # ---  Fill activ cycles list
         self.bbCycles = self.__getAllActivCycles()
         # ---  Fill list
@@ -723,7 +726,7 @@ class PaBeau(wx.Frame):
         try:
             allCycles = self.__getAllCycles()
             atvCycles = self.__getAllActivCycles()
-            dlg = PaParam.PaParam(self)
+            dlg = ASParam.ASParam(self)
             dlg.setItems  (allCycles)
             dlg.checkItems(atvCycles)
             if (dlg.ShowModal() == wx.ID_OK):
@@ -781,7 +784,7 @@ class PaBeau(wx.Frame):
                 s = []
                 dt = xy[0]
                 dt = dt.replace(microsecond=0)
-                dt = dt.astimezone(PaPlot.LOCAL_TZ)
+                dt = dt.astimezone(ASPlot.LOCAL_TZ)
                 s.append( 't={t:s}'.format(t=dt.isoformat(' ')) )
                 if len(xy) > 1:
                     h = xy[1]
@@ -807,7 +810,7 @@ def createPaBeauApp(*args, **kwargs):
     self = wx.App()
 
     #   def OnInit(self):
-    frame = PaBeau(None, -1, '', *args, **kwargs)
+    frame = ASur(None, -1, '', *args, **kwargs)
     self.SetTopWindow(frame)
     frame.Show()
     return self, 1
@@ -819,7 +822,7 @@ if __name__ == "__main__":
         FORMAT = "%(asctime)s %(levelname)s %(message)s"
         logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-        logger = logging.getLogger("INRS.BBModel")
+        logger = logging.getLogger("INRS.ASModel")
         logger.addHandler(logHndlr)
         logger.setLevel(logging.INFO)
 

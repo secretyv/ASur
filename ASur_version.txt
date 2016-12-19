@@ -30,10 +30,10 @@ VSVersionInfo(
       StringTable(
         u'040904b0',
         [StringStruct(u'CompanyName', u'INRS'),
-        StringStruct(u'ProductName', u'PaBeau'),
+        StringStruct(u'ProductName', u'ASur'),
         StringStruct(u'ProductVersion', u'1, 0, 0, 0'),
-        StringStruct(u'InternalName', u'PaBeau'),
-        StringStruct(u'OriginalFilename', u'PaBeau.exe'),
+        StringStruct(u'InternalName', u'ASur'),
+        StringStruct(u'OriginalFilename', u'ASur.exe'),
         StringStruct(u'FileVersion', u'1, 0, 0, 0'),
         StringStruct(u'FileDescription', u'Silly stuff'),
         StringStruct(u'LegalCopyright', u'Copyright 2016 INRS'),

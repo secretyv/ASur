@@ -17,11 +17,11 @@
 # --- limitations under the License.
 #************************************************************************
 """
-La génération de BBModel directement dans le répertoire du module cause des 
+La génération de ASModel directement dans le répertoire du module cause des 
 interférences avec pyinstaller qui ne parvient pas à décoder le __init__.pyd.
 
-Le module est ici généré dans le répertoire BBModel_c à partir du source qui
-est dans BBModel.
+Le module est ici généré dans le répertoire ASModel_c à partir du source qui
+est dans ASModel.
 """
 
 try:
@@ -35,32 +35,32 @@ from Cython.Build import cythonize
 cython_include = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython']
 
 extensions = [
-    Extension('BBModel.tide',
-        ['BBModel/tide.py'],
+    Extension('ASModel.tide',
+        ['ASModel/tide.py'],
         include_dirs = cython_include,
         #extra_compile_args=["-Zi", "/Od"],
         #extra_link_args=["-debug"],        
         ),
-    Extension('BBModel.river',
-        ['BBModel/river.py'],
+    Extension('ASModel.river',
+        ['ASModel/river.py'],
         include_dirs = cython_include,
         #extra_compile_args=["-Zi", "/Od"],
         #extra_link_args=["-debug"],        
         ),
-    Extension('BBModel.station',
-        ['BBModel/station.py'],
+    Extension('ASModel.station',
+        ['ASModel/station.py'],
         include_dirs = cython_include,
         #extra_compile_args=["-Zi", "/Od"],
         #extra_link_args=["-debug"],        
         ),
-    Extension('BBModel.bbclass',
-        ['BBModel/bbclass.py'],
+    Extension('ASModel.asclass',
+        ['ASModel/asclass.py'],
         include_dirs = cython_include,
         #extra_compile_args=["-Zi", "/Od"],
         #extra_link_args=["-debug"],        
         ),
-    Extension('BBModel.bbapi',
-        ['BBModel/bbapi.py'],
+    Extension('ASModel.asapi',
+        ['ASModel/asapi.py'],
         include_dirs = cython_include,
         #extra_compile_args=["-Zi", "/Od"],
         #extra_link_args=["-debug"],        
@@ -68,6 +68,6 @@ extensions = [
 ]
 
 setup(
-    name = 'BBModel',
+    name = 'ASModel',
     ext_modules = cythonize(extensions),
 )

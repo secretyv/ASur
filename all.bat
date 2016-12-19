@@ -1,9 +1,9 @@
 ﻿:: ---  Clean
 call clean.bat
 
-:: ---  Génère BBModel dans BBModel_c
+:: ---  Génère ASModel
 call compile.bat
 
 :: ---  Installe
-call install-PaBeau.bat
+call install-ASur.bat
 pause

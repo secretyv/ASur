@@ -16,7 +16,6 @@
 # --- See the License for the specific language governing permissions and
 # --- limitations under the License.
 #************************************************************************
-
 try:
     from setuptools import setup
     from setuptools import Extension
@@ -26,14 +25,13 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-    Extension('BBModel',
-        ['__init__.py'],
-        #['tide.py', 'river.py', 'station.py', '__init__.py'],
+    Extension('ASParam',
+        ['ASParam.py'],
         include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
         )
 ]
 
 setup(
-    name = 'BBModel',
+    name = 'ASParam',
     ext_modules = cythonize(extensions),
 )

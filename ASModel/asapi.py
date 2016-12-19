@@ -24,42 +24,42 @@ API statique
 
 __version__ = '1.0'
 
-from bbclass import BBModel
+from asclass import ASModel
 
-s_bbModel = None
+s_asModel = None
 
 def init(dataDir):
     """
     La fonction init() doit être appelée avant toute utilisation de
     xeq(...). Elle configure le système.
     """
-    s_bbModel = BBModel(dataDir)
+    s_asModel = ASModel(dataDir)
 
 def getDataDir():
     """
     La fonction getDataDir() retourne le répertoire des données
     """
-    return s_bbModel.getDataDir()
+    return s_asModel.getDataDir()
 
 def getInfo():
     """
     La fonction getInfo() retourne l'info sur les données.
     """
-    return s_bbModel.getInfo()
+    return s_asModel.getInfo()
 
 def getPointNames():
     """
     La fonction getPointNames() retourne la liste des noms
     des points de surverse.
     """
-    return s_bbModel.getPointNames()
+    return s_asModel.getPointNames()
 
 def getPointTideNames(name):
     """
     La fonction getPointTideNames() retourne la liste des noms
     des cycles de marée pour le point de surverse de nom 'name'.
     """
-    return s_bbModel.getPointTideNames()
+    return s_asModel.getPointTideNames()
 
 def getTideSignal(t_start, t_end, dt):
     """
@@ -69,7 +69,7 @@ def getTideSignal(t_start, t_end, dt):
     (temps, niveau d'eau).
     Tous les temps sont UTC.
     """
-    return s_bbModel.getTideSignal(t_start, t_end, dt)
+    return s_asModel.getTideSignal(t_start, t_end, dt)
 
 def xeq(t_start, t_end, dt, pts, do_merge):
     """
@@ -88,4 +88,4 @@ def xeq(t_start, t_end, dt, pts, do_merge):
     ]
     Tous les temps sont UTC.
     """
-    return s_bbModel.xeq(t_start, t_end, dt, pts, do_merge)
+    return s_asModel.xeq(t_start, t_end, dt, pts, do_merge)

@@ -26,13 +26,14 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-    Extension('bbapi',
-        ['bbapi.py'],
+    Extension('ASModel',
+        ['__init__.py'],
+        #['tide.py', 'river.py', 'station.py', '__init__.py'],
         include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
         )
 ]
 
 setup(
-    name = 'bbapi',
+    name = 'ASModel',
     ext_modules = cythonize(extensions),
 )

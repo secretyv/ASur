@@ -17,20 +17,22 @@
 # --- limitations under the License.
 #************************************************************************
 
-"""
-Modèle de temps d'arrivée de surverses
-"""
+try:
+    from setuptools import setup
+    from setuptools import Extension
+except ImportError:
+    from distutils.core import setup
+    from distutils.extension import Extension
+from Cython.Build import cythonize
 
-__version__ = '1.0'
+extensions = [
+    Extension('asclass',
+        ['asclass.py'],
+        include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
+        )
+]
 
-from station import DTA_DELTAS
-from station import DTA_DELTAT
-
-# ---  BBModel class
-from bbclass import BBModel
-
-# ---  Static API
-from bbapi import init
-from bbapi import getPointNames
-from bbapi import getTideSignal
-from bbapi import xeq
+setup(
+    name = 'asclass',
+    ext_modules = cythonize(extensions),
+)

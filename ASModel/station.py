@@ -28,7 +28,7 @@ import datetime
 import logging
 import os
 
-logger = logging.getLogger("INRS.BBModel.station")
+logger = logging.getLogger("INRS.ASModel.station")
 
 DTA_DELTAS = 900
 DTA_DELTAT = datetime.timedelta(seconds=DTA_DELTAS)
@@ -484,7 +484,7 @@ if __name__ == '__main__':
     FORMAT = "%(asctime)s %(levelname)s %(message)s"
     logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    logger = logging.getLogger("INRS.BBModel.station")
+    logger = logging.getLogger("INRS.ASModel.station")
     logger.addHandler(logHndlr)
     logger.setLevel(logging.DEBUG)
 
