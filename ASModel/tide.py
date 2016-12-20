@@ -363,14 +363,20 @@ if __name__ == '__main__':
     def downloadTables():
         tide_tbl = TideTable()
         # ---  Download from internet
-        for y in [2012, 2013, 2014, 2015, 2016]:
-            r = DataReaderMPO(3248, y)
-            tide_tbl.extend( r.read() )
+        for y in [2017]: # [2012, 2013, 2014, 2015, 2016, 2017, 2018]:
+            try:
+                print('Reading tide table for year %i' % y)
+                r = DataReaderMPO(3248, y)
+                tide_tbl.extend( r.read() )
+            except:
+                pass
+        # ---  Sort
+        tide_tbl.sort()
         # ---  Check sorted
         for r0, r1 in zip(tide_tbl.tbl, tide_tbl.tbl[1:]):
             if not r0 < r1:
                 print('Table not sorted: r0=%s r1=%s' %(str(r0), str(r1)))
-        #tide_tbl.sort()
+        # ---  Dump
         tide_tbl.dump(u'.')
         return tide_tbl
 
