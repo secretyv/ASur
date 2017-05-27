@@ -55,6 +55,7 @@ class Rivers(object):
         f = codecs.open(fname, "r", encoding="utf-8")
         for l in f.readlines():
             l = l.strip()
+            if not l: continue
             if l[0] == u'#': continue
             r = River()
             r.load(l)
