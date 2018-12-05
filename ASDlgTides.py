@@ -26,14 +26,14 @@ Boite de dialog de choix des marées
 
 import wx
 
-class ASParam(wx.Dialog):
+class ASDlgTides(wx.Dialog):
     def __init__(self, *args, **kwds):
-        # begin wxGlade: ASParam.__init__
+        # begin wxGlade: ASDlgTides.__init__
         kwds["style"] = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         wx.Dialog.__init__(self, *args, **kwds)
         self.chk_lst  = wx.CheckListBox(self, wx.ID_ANY, style=wx.LB_EXTENDED)
-        self.btn_ok   = wx.Button(self, wx.ID_OK, "")
-        self.btn_cncl = wx.Button(self, wx.ID_CANCEL, "")
+        self.btn_ok   = wx.Button(self, wx.ID_OK, '')
+        self.btn_cncl = wx.Button(self, wx.ID_CANCEL, '')
 
         self.__set_properties()
         self.__do_layout()
@@ -43,13 +43,13 @@ class ASParam(wx.Dialog):
         # end wxGlade
 
     def __set_properties(self):
-        # begin wxGlade: ASParam.__set_properties
-        self.SetTitle(u"Paramètres")
+        # begin wxGlade: ASDlgTides.__set_properties
+        self.SetTitle('Paramètres')
         self.SetSize((400, 300))
         # end wxGlade
 
     def __do_layout(self):
-        # begin wxGlade: ASParam.__do_layout
+        # begin wxGlade: ASDlgTides.__do_layout
         szr_main = wx.BoxSizer(wx.VERTICAL)
         szr_btn  = wx.BoxSizer(wx.HORIZONTAL)
         szr_main.Add(self.chk_lst, 4, wx.EXPAND, 0)
@@ -80,14 +80,14 @@ class ASParam(wx.Dialog):
     def on_btn_cancel(self, event):
         self.Destroy()
 
-# end of class ASParam
+# end of class ASDlgTides
 
 
 if __name__ == "__main__":
     import wx
     app = wx.PySimpleApp()
     fr = wx.Frame(None, title='test')
-    panel = ASParam(fr)
+    panel = ASDlgTides(fr)
     panel.setItems([ str(i) for i in range(20) ])
     panel.ShowModal()
     fr.Show()

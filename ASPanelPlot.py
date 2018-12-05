@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #************************************************************************
-# --- Copyright (c) INRS 2016
+# --- Copyright (c) INRS 2016-2018
 # --- Institut National de la Recherche Scientifique (INRS)
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,28 +18,39 @@
 #************************************************************************
 
 """
-Plot 
+Ouput panel to display
 """
 
-__version__ = '1.0'
+"""
+1D Plot
+"""
 
 import datetime
-import time
-import tzlocal
+import logging
 import pytz
 import numpy as np
 
-import wxmpl
+import sys
+if 'matplotlib' not in sys.modules:
+    import matplotlib
+    matplotlib.use('WXAgg') # do this before importing pyplot
+
 import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib import dates as mpldt
-from matplotlib import ticker as mpltk
+from matplotlib.collections import LineCollection
+from matplotlib import pyplot as plt
+from matplotlib import dates  as mpldt
 import mpldatacursor
 
-import ASModel
-from ASModel import DTA_DELTAT
+import wx
 
-LOCAL_TZ   = tzlocal.get_localzone()
+from ASTranslator import translator as translate
+from ASConst      import LOCAL_TZ
+from ASModel      import DTA_DELTAT
+from ASEvents     import ASEventMotion, ASEVT_MOTION
+from ASPanelWxMPL import ASPanelWxMPL
+
+LOGGER = logging.getLogger("INRS.ASur.panel.plot")
+
 DSP_DELTAS = 300
 DSP_DELTAT = datetime.timedelta(seconds=DSP_DELTAS)
 FONT_SIZE  = 8
@@ -59,41 +70,13 @@ COLOR_TBL = ['#FFA500',   # 'orange',
 def get_color(i):
     return COLOR_TBL[i % len(COLOR_TBL)]
 
-
-# ---  Remplace wxmpl.format_coord pour
-#      récupérer les coord
-def format_coord(axes, xdata, ydata):
-    if xdata is None or ydata is None:
-        return ''
-    return (xdata, ydata)
-wxmpl.format_coord = format_coord
-
-# ---  Spécialise wxmpl.Painter pour transférer
-#      les appels au cb avec les coord
-class LocationPainter(wxmpl.Painter):
-    def __init__(self, view, cb):
-        wxmpl.Painter.__init__(self, view)
-        self.cb = cb
-
-    def formatValue(self, value):
-        return value[0]
-
-    def drawValue(self, dc, value):
-        try:
-            x, y = value
-            t = mpldt.num2date(x, tz=pytz.utc)   # x is matplotlib time UTC
-            self.cb((t,y))
-        except:
-            pass
-
-    def clearValue(self, dc, value):
-        self.cb(None)
-
-# ---  Spécialise mpldatacursor.DataCursor pour transférer
-#      les appels au cb avec les infos
 class DADataCursor(mpldatacursor.DataCursor):
+    """
+    Spécialise mpldatacursor.DataCursor
+    Gére les données et lance un évenement
+    """
     def __init__(self, *args, **kwargs):
-        self.cb_msg = kwargs.pop("messenger", None)
+        self.parent = kwargs.pop('parent', None)
         mpldatacursor.DataCursor.__init__(self, *args, **kwargs)
 
     def update(self, event, annotation):
@@ -105,28 +88,26 @@ class DADataCursor(mpldatacursor.DataCursor):
         x = info['x']
         y = info['y']
         c = info['c']
-        t = mpldt.num2date(x, tz=pytz.utc)   # x is matplotlib time UTC
         if c:
-            self.cb_msg( (t, y, pow(10.0,c)) )
-        else:
-            self.cb_msg( (t, y) )
+            c = pow(10.0,c)
+        wnd = self.parent
+        wx.PostEvent(wnd, ASEventMotion(wnd.GetId(), xy=(x,y), c=c))
 
-
-class ASPlot(wxmpl.PlotPanel):
+class ASPanelPlot(ASPanelWxMPL):
     def __init__(self, *args, **kwargs):
-        self.cb_msg  = kwargs.pop("messenger", None)
-        self.cb_dclk = kwargs.pop("on_dclick", None)
-        wxmpl.PlotPanel.__init__(self, *args, **kwargs)
+        super(ASPanelPlot, self).__init__(*args, **kwargs)
 
-        self.location = LocationPainter(self, self.cb_msg)
         self.axes = None
         self.DC   = []
         self.CS   = []
         self.asurMdl = None
         self.status_onZoom = False
 
-        self.get_figure().canvas.mpl_connect('pick_event', self._onPick)
-        
+        self.Bind(ASEVT_MOTION, self.onMotion)
+
+        #canvas = self.get_figure().canvas
+        #canvas.mpl_connect('pick_event', self._onPick)
+
     #def __dateFormatter(self, x):
     #    """ formatter for date x-data. primitive, and probably needs
     #    improvement, following matplotlib's date methods.
@@ -144,15 +125,11 @@ class ASPlot(wxmpl.PlotPanel):
     #        fmt = "%m/%d\n%H:%M"
     #    return time.strftime(fmt, dates.num2date(x).timetuple())
 
-    def __displayMessage(self, info):
-        self.msgDisplayed = True
-        self.cb_msg(info)
-
     def _onPick(self, evt):
         self.status_onzoom = True
         pnt = evt.artist.get_gid()
         if self.cb_dclk: self.cb_dclk(pnt)
-        
+
     #def _onKeyDown(self, evt):
     #    print '_onKeyDown', evt
     #    wxmpl.PlotPanel._onKeyDown(self, evt)
@@ -161,43 +138,39 @@ class ASPlot(wxmpl.PlotPanel):
     #    print '_onKeyUp', evt
     #    wxmpl.PlotPanel._onKeyUp(self, evt)
 
-    def _onLeftButtonDClick(self, evt):
-        """
-        Overrides the C{FigureCanvasWxAgg} left-dclick event handler, to take care
-        of exception http://stackoverflow.com/questions/25332225/choosing-a-point-in-matplotlib-embedded-in-wxpython,
-        before dispatching the event to the parent.
-        """
-        canvas = self.get_figure().canvas
-        if canvas.HasCapture(): canvas.ReleaseMouse()
-        wxmpl.PlotPanel._onLeftButtonDClick(self, evt)
+    #def _onLeftButtonDClick(self, evt):
+    #    """
+    #    Overrides the C{FigureCanvasWxAgg} left-dclick event handler, to take care
+    #    of exception http://stackoverflow.com/questions/25332225/choosing-a-point-in-matplotlib-embedded-in-wxpython,
+    #    before dispatching the event to the parent.
+    #    """
+    #    canvas = self.get_figure().canvas
+    #    if canvas.HasCapture(): canvas.ReleaseMouse()
+    #    wxmpl.PlotPanel._onLeftButtonDClick(self, evt)
 
-    def _onMotion(self, evt):
+    def onMotion(self, evt):
         """
-        Overrides the C{FigureCanvasWxAgg} mouse motion event handler,
-        dispatching first to the datacursor and, if not consumed, to the parent.
+        Change x to time and skip event
         """
-        self.msgDisplayed = False
-        # ---  Dispatch aux datacursors
-        x = evt.GetX()
-        y = self.figure.bbox.height - evt.GetY()
         try:
-            mpl.backend_bases.FigureCanvasBase.motion_notify_event(self, x, y, guiEvent=evt)
-            # ---  Dispatch au parent
-            if not self.msgDisplayed:
-                #evt.Skip(True)
-                wxmpl.PlotPanel._onMotion(self, evt)
-        except IndexError:
+            x, y = evt.xy
+            t = mpldt.num2date(x, tz=pytz.utc)   # x is matplotlib time UTC
+            evt.th = (t, y)
+            evt.xy = None
+            evt.Skip()
+        except ValueError:
             pass
 
     def __plotClearPlot(self):
-        self.get_figure().clf()
-        self.axes = self.figure.gca()
-        self.figure.subplots_adjust(hspace  = 0.090,
-                                    wspace  = 0.010,
-                                    bottom  = 0.089,
-                                    top     = 0.951,
-                                    left    = 0.050,
-                                    right   = 0.973)
+        fig = self.get_figure()
+        fig.clf()
+        fig.subplots_adjust(hspace  = 0.090,
+                            wspace  = 0.010,
+                            bottom  = 0.089,
+                            top     = 0.951,
+                            left    = 0.050,
+                            right   = 0.973)
+        self.axes = fig.gca()
         self.CS   = []
         self.DC   = []
 
@@ -213,7 +186,7 @@ class ASPlot(wxmpl.PlotPanel):
 
         # ---  Plot
         kwargs = {}
-        kwargs['label']     = u'Marée'
+        kwargs['label']     = 'Marée'
         kwargs['linewidth'] = 1.5
         kwargs['linestyle'] = 'solid'
         kwargs['color']     = '#0000FF'   # blue
@@ -239,7 +212,7 @@ class ASPlot(wxmpl.PlotPanel):
         X1Y = np.array([X1,Y]).T.reshape(-1,1,2)
         XY = np.concatenate([X0Y,X1Y], axis=1)
         C  = np.log10( np.array(Z) )
-        lc = mpl.collections.LineCollection(XY, array=C, **kwargs)
+        lc = LineCollection(XY, array=C, **kwargs)
         cs = self.axes.add_collection(lc)
 
         if label:
@@ -258,7 +231,7 @@ class ASPlot(wxmpl.PlotPanel):
         dy = (ymax-ymin) / (len(data) + 1)
         for pt,dtaPt in data:                       # Pour chaque point de surverse
 
-            lbl  = pt
+            lbl  = translate[pt]
             gid  = pt
             iplt = iplt + 1
             for it,dtaTr in enumerate(dtaPt):       # Pour chaque transit
@@ -275,7 +248,7 @@ class ASPlot(wxmpl.PlotPanel):
                         self.CS.append(cs)
                         lbl = ''
 
-        dc = DADataCursor(self.CS, hover=True, messenger=self.__displayMessage)
+        dc = DADataCursor(self.CS, hover=True, parent=self)
         self.DC.append(dc)
 
     def __plotOnePointZoom(self, data, dtmin, dtmax, bboxTide):
@@ -286,7 +259,7 @@ class ASPlot(wxmpl.PlotPanel):
         dy = (ymax-ymin) / (len(data) + 1)
         for pt,dtaPt in data:                       # Pour chaque point de surverse
 
-            if iplt == 0: lbl  = pt
+            if iplt == 0: lbl = translate[pt]
             gid  = pt
             iplt = iplt + 1
             for it,dtaTr in enumerate(dtaPt):       # Pour chaque transit
@@ -303,7 +276,7 @@ class ASPlot(wxmpl.PlotPanel):
                         self.CS.append(cs)
                         lbl = ''
 
-        dc = DADataCursor(self.CS, hover=True, messenger=self.__displayMessage)
+        dc = DADataCursor(self.CS, hover=True, parent=self)
         self.DC.append(dc)
 
     def __plotLimits(self, data, dtmin, dtmax):
@@ -334,7 +307,7 @@ class ASPlot(wxmpl.PlotPanel):
         kwargs['format']   = '$10^{%i}$'
         kwargs['ticks']    = [-6, -5, -4, -3, -2]
         #kwargs['drawedges']= True
-        cbar = self.figure.colorbar(self.CS[0], **kwargs)
+        cbar = self.get_figure().colorbar(self.CS[0], **kwargs)
         kwargs = {}
         kwargs['labelsize'] = FONT_SIZE+1
         cbar.ax.tick_params(**kwargs)
@@ -355,10 +328,10 @@ class ASPlot(wxmpl.PlotPanel):
         kwargs['fontsize']  = FONT_SIZE
         self.axes.legend(**kwargs)
 
-    def plotAll(self, asurMdl, data, dtini, dtfin, dtmax, title = u''):
+    def plotAll(self, asurMdl, data, dtini, dtfin, dtmax, title = ''):
         mpl.rcParams['timezone'] = 'UTC'
         self.status_onzoom = False
-        
+
         # ---  Plot the data
         self.asurMdl = asurMdl
         self.__plotClearPlot()
@@ -373,7 +346,7 @@ class ASPlot(wxmpl.PlotPanel):
         #self.axes.set_autoscale_on(False)
         #self.axes.set_xlim((bboxTide[0][0],bboxTide[1][0]))
         #self.axes.set_ylim((bboxTide[0][1],bboxTide[1][1]))
-        
+
         # ---  Adjust axis param
         self.axes.tick_params(axis='both', which='major', labelsize=FONT_SIZE)
         self.axes.tick_params(axis='both', which='minor', labelsize=FONT_SIZE)
@@ -393,9 +366,9 @@ class ASPlot(wxmpl.PlotPanel):
             kwargs['position']  = (0.97, 0.93)
             self.axes.set_title(title, **kwargs)
 
-        self.draw()
+        self.redraw()
 
-    def plotZoom(self, asurMdl, data, dtini, dtfin, dtmax, title = u''):
+    def plotZoom(self, asurMdl, data, dtini, dtfin, dtmax, title = ''):
         mpl.rcParams['timezone'] = 'UTC'
         self.status_onzoom = True
 
@@ -428,13 +401,12 @@ class ASPlot(wxmpl.PlotPanel):
             kwargs['position']  = (0.97, 0.93)
             self.axes.set_title(title, **kwargs)
 
-        self.draw()
+        self.redraw()
 
 if __name__ == "__main__":
-    import wx
-    app = wx.PySimpleApp()
+    app = wx.App()
     fr = wx.Frame(None, title='test')
-    panel = ASPlot(fr, wx.ID_ANY)
-    panel.draw()
+    panel = ASPanelPlot(parent=fr)
+    panel.redraw()
     fr.Show()
     app.MainLoop()
