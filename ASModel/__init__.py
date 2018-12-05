@@ -21,16 +21,18 @@
 Modèle de temps d'arrivée de surverses
 """
 
-__version__ = '1.0'
+from __about__ import *
 
-from station import DTA_DELTAS
-from station import DTA_DELTAT
+from .station import DTA_DELTAS
+from .station import DTA_DELTAT
 
 # ---  ASModel class
-from asclass import ASModel
+from .asclass import ASModel
+from .asplume import ASPlume
 
 # ---  Static API
-from asapi import init
-from asapi import getPointNames
-from asapi import getTideSignal
-from asapi import xeq
+from .asapi import init
+from .asapi import getPointNames
+from .asapi import getTideSignal
+from .asapi import getOverflowData
+from .asapi import getOverflowPlumes

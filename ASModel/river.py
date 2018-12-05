@@ -21,16 +21,18 @@
 River
 """
 
-__version__ = '1.0'
-
 import codecs
 import os
 import logging
 
-logger = logging.getLogger("INRS.ASModel.river")
+LOGGER = logging.getLogger('INRS.ASModel.river')
 
-class River(object):
-    def __init__(self, name = u'', velocity = []):
+class River:
+    """
+    Class River represent a river in ASModel. A River has a name
+    and flow velocities.
+    """
+    def __init__(self, name='', velocity=()):
         self.name = name
         self.vlct = velocity
 
@@ -46,44 +48,57 @@ class River(object):
     def getTransitTimes(self, d):
         return [ d/v for v in self.vlct ]
 
-class Rivers(object):
+class Rivers:
+    """
+    Container of River
+    """
     def __init__(self):
         self.tbl = {}
 
     def load(self, dataDir):
+        """
+        Load the rivers from file
+        """
         fname = os.path.join(dataDir, 'rivers.txt')
-        f = codecs.open(fname, "r", encoding="utf-8")
-        for l in f.readlines():
-            l = l.strip()
-            if not l: continue
-            if l[0] == u'#': continue
-            r = River()
-            r.load(l)
-            self.tbl[r.name] = r
+        LOGGER.info('Reading %s', fname)
+        f = codecs.open(fname, 'r', encoding='utf-8')
+        for line in f.readlines():
+            line = line.strip()
+            if not line: continue
+            if line[0] == '#': continue
+            rvr = River()
+            rvr.load(line)
+            self.tbl[rvr.name] = rvr
 
     def getNames(self):
+        """
+        Return the list of all river names
+        """
         return sorted( self.tbl.keys() )
 
     def __getitem__(self, name):
         return self.tbl[name]
 
 if __name__ == '__main__':
-    def loadRivers():
+    def loadRivers(path):
         tbl = Rivers()
-        tbl.load(u'data')
+        tbl.load(path)
         return tbl
 
-    logHndlr = logging.StreamHandler()
-    FORMAT = "%(asctime)s %(levelname)s %(message)s"
-    logHndlr.setFormatter( logging.Formatter(FORMAT) )
+    def main():
+        logHndlr  = logging.StreamHandler()
+        logFormat = '%(asctime)s %(levelname)s %(message)s'
+        logHndlr.setFormatter( logging.Formatter(logFormat) )
 
-    logger = logging.getLogger("INRS.ASModel.river")
-    logger.addHandler(logHndlr)
-    logger.setLevel(logging.DEBUG)
+        logger = logging.getLogger('INRS.ASModel.river')
+        logger.addHandler(logHndlr)
+        logger.setLevel(logging.DEBUG)
 
-    tbl = loadRivers()
-    for r in tbl.tbl:
-        print r.dump()
+        path = '../BBData_v3.2/data.lim=1e-4'
+        tbl = loadRivers(path)
+        for rvr in tbl.tbl:
+            print(rvr)
 
-    print tbl.getNames()
+        print(tbl.getNames())
 
+    main()

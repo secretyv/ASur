@@ -3,6 +3,7 @@
 #************************************************************************
 # --- Copyright (c) INRS 2016
 # --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -21,16 +22,15 @@
 Modèle de calcul des temps d'arrivée d'une surverse
 """
 
-__version__ = '1.0'
-
 import datetime
 import logging
 
-from river   import Rivers
-from station import OverflowPoints
-from tide    import TideTable
+from .river    import Rivers
+from .station  import OverflowPoints
+from .tide     import TideTable
+from .overflow import Overflow
 
-logger = logging.getLogger("INRS.ASModel.ASModel")
+LOGGER = logging.getLogger("INRS.ASModel.ASModel")
 
 class ASModel:
     def __init__(self, dataDir):
@@ -90,15 +90,16 @@ class ASModel:
         sgnl = self.m_tide.getTideSignal(t_start, t_end, dt)
         return [ (tr.dt, tr.wl) for tr in sgnl ]
 
-    def xeq(self, t_start, t_end, dt, pts, do_merge):
+    def getOverflowData(self, dt, overflows, do_merge):
         """
-        La fonction xeq(..) calule les temps d'arrivée pour une surverse. L'interval de surverse
-        est donné par [t_start, t_end], le pas de calul est dt. Le calcul est effectué pour
-        chacun des points de surverse. La liste pts ccomprend, pour chaque point de surverse,
-        son nom et la liste des cycles de marée. Une liste de marée vide implique tous les cycles.
-        Par exemple: [ [p1, [c1, c2, c5]], [p2, []] ...].
-        La valeur booléenne do_merge contrôle si les différents temps de transit sont agglomérés ou 
-        gardés séparés.
+        La fonction getOverflowData(..) calcule les temps d'arrivée pour une surverse.
+        L'intervalle de surverse est donné par [t_start, t_end], le pas de
+        calcul est dt. Le calcul est effectué pour chacun des points de
+        surverse. La liste overflows des points de surverse comprend, pour
+        chaque point de surverse, son nom et la liste des cycles de marée.
+        Une liste de marée vide implique tous les cycles.
+        La valeur booléenne do_merge contrôle si les différents temps de
+        transit sont agglomérés ou gardés séparés.
 
         La fonction retourne l'information suivante:
         [
@@ -107,33 +108,62 @@ class ASModel:
         ]
         Tous les temps sont UTC.
         """
-        assert isinstance(t_start, datetime.datetime)
-        assert isinstance(t_end,   datetime.datetime)
-        assert isinstance(dt,      datetime.timedelta)
-        assert isinstance(pts,    (list, tuple))
-        assert isinstance(pts[0], (list))
+        assert isinstance(dt,           datetime.timedelta)
+        assert isinstance(overflows,    (list, tuple))
+        assert isinstance(overflows[0], Overflow)
 
         res = []
-        for pt, cycls in pts:
+        for o in overflows:
             try:
-                r = self.m_points[pt].doOverflow(t_start, t_end, dt, self.m_tide, tide_cycles=cycls, merge_transit_times = do_merge)
-                res.append( (pt, r) )
+                p = self.m_points[o.name]
+                r = p.doOverflow(o.tini, o.tend, dt, self.m_tide, tide_cycles=o.tides, merge_transit_times = do_merge)
+                res.append( (o.name, r) )
             except KeyError as e:
-                logger.debug('ASModel.xeq: Skipping point %s' % pt)
+                LOGGER.debug(str(e))
+                LOGGER.warning('ASModel.xeq: Skipping point %s', o.name)
+        return res
+
+    def getOverflowPlumes(self, dt, overflows):
+        """
+        La fonction getOverflowPlumes(..)
+
+        La fonction retourne l'information suivante:
+        [
+            Plume(), ...
+        ]
+        Tous les temps sont UTC.
+        """
+        assert isinstance(dt,           datetime.timedelta)
+        assert isinstance(overflows,    (list, tuple))
+        assert isinstance(overflows[0], Overflow)
+
+        res = []
+        for o in overflows:
+            try:
+                p = self.m_points[o.name]
+                r = p.doPlumes(o.tini, o.tend, dt, self.m_tide, tide_cycles=o.tides)
+
+                res.extend(r)
+            except KeyError as e:
+                LOGGER.debug(str(e))
+                LOGGER.warning('ASModel.xeq: Skipping point %s', o.name)
         return res
 
 if __name__ == '__main__':
     import pytz
-    logHndlr = logging.StreamHandler()
-    FORMAT = "%(asctime)s %(levelname)s %(message)s"
-    logHndlr.setFormatter( logging.Formatter(FORMAT) )
+    def main():
+        logHndlr = logging.StreamHandler()
+        FORMAT = "%(asctime)s %(levelname)s %(message)s"
+        logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    logger.addHandler(logHndlr)
-    logger.setLevel(logging.DEBUG)
+        LOGGER.addHandler(logHndlr)
+        LOGGER.setLevel(logging.DEBUG)
 
-    t0 = datetime.datetime.now(tz=pytz.utc)
-    t1 = t0 + datetime.timedelta(hours=1)
-    dt = datetime.timedelta(seconds=900)
-    mdl = ASModel()
-    #xeq(t0, t1, dt, ['AFO-STL-002'])
-    mdl.getTideSignal(t0, t1, dt)
+        t0 = datetime.datetime.now(tz=pytz.utc)
+        t1 = t0 + datetime.timedelta(hours=1)
+        dt = datetime.timedelta(seconds=900)
+        mdl = ASModel('.')
+        #xeq(t0, t1, dt, ['AFO-STL-002'])
+        mdl.getTideSignal(t0, t1, dt)
+
+    main()

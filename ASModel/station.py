@@ -21,14 +21,18 @@
 Overflow points
 """
 
-__version__ = u'1.0'
-
 import codecs
 import datetime
 import logging
 import os
+import pickle
 
-logger = logging.getLogger("INRS.ASModel.station")
+try:
+    from .asplume import ASPlume
+except ModuleNotFoundError:
+    from asplume import ASPlume
+
+LOGGER = logging.getLogger("INRS.ASModel.station")
 
 DTA_DELTAS = 900
 DTA_DELTAT = datetime.timedelta(seconds=DTA_DELTAS)
@@ -36,128 +40,187 @@ DTA_DELTAT = datetime.timedelta(seconds=DTA_DELTAS)
 def nint(d):
     return int(d + 0.5)
 
-class OverflowTideResponse(object):
+class Hit(object):
+    def __init__(self, ix=-1, iy=-1, a=-1.0, md5='', dd=False, pnt=None):
+        self.ix = ix
+        self.iy = iy
+        self.a  = a
+        self.md5= md5
+        self.dd = dd
+        self.pnt= pnt
+        assert pnt is None or isinstance(pnt, OverflowPointOneTide)
+
+    def __lt__(self, other):
+        if self.ix < other.ix: return True
+        if self.ix > other.ix: return False
+        if self.iy < other.iy: return True
+        if self.iy > other.iy: return False
+        return self.a < other.a
+
+    def __eq__(self, other):
+        return self.ix == other.ix and self.iy == other.iy and self.a == other.a
+
+class OverflowPointOneTide(object):
     """
-    OverflowTideResponse for one tide cycle
+    OverflowPointOneTide
+        One point
+        One tide cycle
+        Multiple river velocities
     All times are UTC
+
+    tideDta: ix, iy are timedelta from tide start (HW) in 15' blocs
     """
 
     def __init__(self, river = None, dist = 0.0):
         self.m_river    = river
         self.m_dist2SL  = dist
-        self.m_dt       = -1.0    # Durée du cycle
-        self.m_dh       =  0.0    # marnage
-        self.m_tideDta  = {}
+        self.m_dataDir  = ''
+        self.m_pathDir  = ''
+        self.m_dt       = -1.0    # Tide cycle duration
+        self.m_dh       =  0.0    # Tide height
+        self.m_tideDta  = {}      # Dic of { ix : (iy, a) }
+        self.m_pathDta  = {}      # Dic of { ix : (iy, md5, dd) }
+        self.m_dilution = -1.0    # Target dilution
 
-    #def __lt__(self, other):
-    #    return (self.m_dh < other.m_dh) or (self.m_dh == other.m_dh and self.m_dt < other.m_dt)
-
-    #def __eq__(self, other):
-    #    return self.m_dh == other.m_dh and self.m_dt == other.m_dt
-
-    def __richcmp__(self, other, op):
+    def __lt__(self, other):
         """
-        cython code
-        op: < 0; <= 1; == 2; != 3; > 4; >= 5        
+        Comparison is based on tide attributes
         """
-        if op == 0: 
-            return (self.m_dh < other.m_dh) or (self.m_dh == other.m_dh and self.m_dt < other.m_dt)
-        #if op == 1: 
-        #    return self.dt <= other.dt
-        if op == 2: 
-            return self.m_dh == other.m_dh and self.m_dt == other.m_dt
-        if op == 3: 
-            return self.m_dh != other.m_dh or self.m_dt != other.m_dt
-        #if op == 4: 
-        #    return self.dt >  other.dt
-        #if op == 5: 
-        #    return self.dt >= other.dt
-        assert False
+        return (self.m_dh < other.m_dh) or (self.m_dh == other.m_dh and self.m_dt < other.m_dt)
+
+    def __eq__(self, other):
+        """
+        Comparison is based on tide attributes
+        """
+        return self.m_dh == other.m_dh and self.m_dt == other.m_dt
+
+    def __repr__(self):
+        return '%s: at %s' % ('OverflowPointOneTide', self.getId())
 
     def getTideData(self):
-        return self.m_dt, self.m_dh, self.m_tideDta
+        return self.m_dt, self.m_dh, self.m_tideDta, self.m_pathDta, self.m_dataDir, self.m_pathDir, self.m_dilution
 
-    def setTideData(self, dt, dh, tDta):
+    def setTideData(self, dt, dh, tDta={}, pDta={}, dtaDir='', pthDir='', dil=-1.0):
         self.m_dt = dt
         self.m_dh = dh
         self.m_tideDta = tDta
+        self.m_pathDta = pDta
+        self.m_dataDir = dtaDir
+        self.m_pathDir = pthDir
+        self.m_dilution= dil
 
     def getId(self):
-        return u'dh=%.2f, dt=%.2f' % (self.m_dh, self.m_dt/3600)
+        return 'dh=%.2f, dt=%.2f' % (self.m_dh, self.m_dt/3600)
 
-    def __getTimeToBeach(self, inrmTime):
+    def __getRiverTransitTime(self):
+        return self.m_river.getTransitTimes(self.m_dist2SL) if self.m_river else [0.0]
+
+    def __getTimeToBeach(self, ix):
         """
-        For the normalized tide time index inrmTime, returns a list of
+        For the normalized time index ix, returns a list of
         hits.
-        Returns [ (j, dil), ... ] with:
-            j timedelta index (15' slot)
-            dil dilution
-        If the path doesn't hit the beach, returns [ (0,-1.0) ]
+        Returns [ (iy, a), ... ] with:
+            iy: arrival normalized time index (15' slot)
+            a:  dilution
+        If the path doesn't hit the beach, returns []
         """
         if self.m_tideDta:
             try:
-                return self.m_tideDta[inrmTime]
+                return self.m_tideDta[ix]
             except KeyError:
-                return [(0, -1.0)]
+                return []
         else:
-            return [(0, -1.0)]
+            return []
 
-    def __getTransitTime(self):
-        return self.m_river.getTransitTimes(self.m_dist2SL) if self.m_river else [0.0]
- 
-    def __doOneOverflow(self, t_actu, t_start, tide_tbl):
+    def __getSingleTideData(self, ix, iy):
+        """
+        For the normalized time index ix, iy
+        returns the associated data.
+        Returns [ (iy, a), ... ] with:
+            iy: arrival normalized time index (15' slot)
+            a:  dilution
+        """
+        for dta in self.m_tideDta[ix]:
+            if dta[0] == iy:
+                return dta
+        raise KeyError
+
+    def __getSinglePathData(self, ix, iy):
+        """
+        """
+        for dta in self.m_pathDta[ix]:
+            if dta[0] == iy:
+                return dta
+        raise KeyError
+
+    def __getHitsForOneSpill(self, t_actu, t_start, tide_tbl):
         """
         Returns a list for each river transit time:
             [ l1, ...]
         with:
         l1, list for transit time 1,
-        l1[j] = d, j is timedelta index of times to reach the beach, and d is dilution,
+        l1[j] = d,
+            j is timedelta from t_start to time to hit the beach
+            j is in DTA_DELTAS slots,
+            j in [0,...[
+            d is dilution
+        Time slots with NO hits a marked with d=-1
         """
-        t2bds = []      # list of time to beach + dilution
-        # --- For each transit time in river
-        for dt_rvr in self.__getTransitTime():
-            t2bd = [-1.0]*(12*4)      # Time to beach + dilution
+        t2bds = []      # list of list
 
+        # --- For each transit time in river
+        for dt_rvr in self.__getRiverTransitTime():
+            t2bd = [None]*(12*4)      # Hits for the transit time
+            jmax = 0
+
+            # --- Effective time
             t_rvr = t_actu + datetime.timedelta(seconds=dt_rvr)
 
-            # --- Index of times to hit the beach + associated dilution
-            inrm_time = tide_tbl.getNormalizedTimeIndex(t_rvr)
-            hits = self.__getTimeToBeach(inrm_time)
-            #print u'%7.1f  %s %3i' % (dt_rvr, t_rvr, inrm_time), hits
+            # --- Normalized tide time index of hits + associated dilution
+            ix = tide_tbl.getNormalizedTimeIndex(t_rvr)
+            hits = self.__getTimeToBeach(ix)
+            #print '%7.1f  %s %3i' % (dt_rvr, t_rvr, ix), hits
 
             # --- Get time to beach
-            for j,d in hits:
-                t_tot = t_rvr + datetime.timedelta(seconds=j*DTA_DELTAS)
-                # --- Time index DTA_DELTAS slots
-                j_tot = nint( (t_tot-t_start).total_seconds() / DTA_DELTAS )
-                if j_tot >= len(t2bd): t2bd.extend( [-1.0]*(j_tot-len(t2bd)+1) )
-                t2bd[j_tot] = d
+            for iy, a in hits:
+                # ---  Time of arrival (real time)
+                t_hit = t_rvr + datetime.timedelta(seconds=(iy-ix)*DTA_DELTAS)
+                # --- Timedelta to t_start in DTA_DELTAS slots
+                j_hit = nint( (t_hit-t_start).total_seconds() / DTA_DELTAS )
+                if j_hit >= len(t2bd): t2bd.extend( [None]*(j_hit-len(t2bd)+1) )
+                jmax = max(j_hit, jmax)
+                iy_, md5, dd = self.__getSinglePathData(ix, iy)
+                t2bd[j_hit] = Hit(ix, iy, a, md5, dd, self)
 
-            t2bds.append(t2bd)
+            t2bds.append(t2bd[:jmax])
         return t2bds
 
-    def __doOverflowReduction(self, t2bdg, t2bds, t_actu):
+    def __reduceHits(self, t2bdg, t2bds):
         """
         Reduce (max) t2bds in t2bdg
         """
-        #print u'OverflowTideResponse.__doOverflowReduction', t_actu
-        if len(t2bdg) <= 0: t2bdg = [ [] for _ in xrange(len(t2bds)) ]
+        # LOGGER.trace('OverflowPointOneTide.__reduceHits')
+        if len(t2bdg) <= 0: t2bdg = [ [] for _ in range(len(t2bds)) ]
         assert len(t2bdg) == len(t2bds)
 
         for ov,rv in zip(t2bds, t2bdg):
-            if len(ov) > len(rv): rv.extend( [-1]*(len(ov)-len(rv)) )
-            for j in xrange(len(ov)):
-                rv[j] = max(rv[j], ov[j])
+            if len(ov) > len(rv): rv.extend( [None]*(len(ov)-len(rv)) )
+            for j in range(len(ov)):
+                if rv[j]:
+                    if ov[j]:
+                        rv[j] = max(rv[j], ov[j])
+                else:
+                    rv[j] = ov[j]
 
         return t2bdg
 
-    def doOverflow(self, t_start, t_end, dt, tide_tbl, merge_transit_times = False):
+    def getHitsForSpillWindow(self, t_start, t_end, dt, tide_tbl, merge_transit_times = False):
         """
         For t in [t_start, t_end] with step dt, compute the
-        exposure time window to overflow. Times are UTC
+        hits on the beach. Times are UTC
         Returns:
             [    # for each river transit time
-                [dil, ...] dilution for time index
+                [a0, ..., ai] dilution for timedelta i, in DTA_DELTAS slots
             ]
         """
         # ---  Effective dt
@@ -166,88 +229,202 @@ class OverflowTideResponse(object):
         dteff = (t_end-t_start) / neff
 
         # ---  Loop on time steps
-        res = []
+        t2bdg = []
         t_actu = t_start
-        for it in xrange(neff+1):
-            t2bds = self.__doOneOverflow(t_actu, t_start, tide_tbl)
+        for it in range(neff+1):
+            t2bds = self.__getHitsForOneSpill(t_actu, t_start, tide_tbl)
             if merge_transit_times:
                 t2bds_tmp = []
                 for t in t2bds:
-                    t2bds_tmp = self.__doOverflowReduction(t2bds_tmp, [t], t_actu)
+                    t2bds_tmp = self.__reduceHits(t2bds_tmp, [t])
                 t2bds = t2bds_tmp
-            res = self.__doOverflowReduction(res, t2bds, t_actu)
+            t2bdg = self.__reduceHits(t2bdg, t2bds)
             t_actu += dteff
 
-        #logger.debug(u'OverflowTideResponse.doOverflow: reduced data')
-        #logger.debug(u'    %s' % [ 1 if r > 0 else 0 for r in res[0] ] if res else [])
-        return res
+        #LOGGER.trace('OverflowPointOneTide.getHitsForSpillWindow: reduced data')
+        #LOGGER.trace('    %s' % [ 1 if r > 0 else 0 for r in t2bdg[0] ] if t2bdg else [])
+        return t2bdg
+
+    def getPath(self, ix, iy):
+        iy, md5, dd = self.__getSinglePathData(ix, iy)
+        fname = 'path-%s.pkl' % (md5)
+        fname = os.path.join(self.m_pathDir, fname)
+        pth = None
+        if not os.path.isfile(fname):
+            LOGGER.warning('Path file not found: %s', fname)
+        else:
+            with open(fname, 'rb') as f: pth = pickle.load(f, encoding='bytes')
+        return pth
 
     def dump(self):
         if self.m_river:
-            return u'(%s, %f); (%f; %f)' % (self.m_river.name, self.m_dist2SL, self.m_dh, self.m_dt)
+            return '(%s, %f); (%f; %f)' % (self.m_river.name, self.m_dist2SL, self.m_dh, self.m_dt)
         else:
-            return u'(%f, %f)' % (self.m_dh, self.m_dt)
+            return '(%f, %f)' % (self.m_dh, self.m_dt)
 
-    def load(self, dt, dh, data):
+    def loadTide(self, dt, dh, data, dataDir, dilution):
         self.m_dt = dt
         self.m_dh = dh
         self.m_tideDta = {}
         for i, j, a, in data:
             self.m_tideDta.setdefault(i, [])
             self.m_tideDta[i].append( (j,a) )
-        #logger.debug(u'OverflowTideResponse.load: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))
+        self.m_dataDir  = dataDir
+        self.m_dilution = dilution
+        LOGGER.trace('OverflowPointOneTide.loadTide: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))
+
+    def loadPath(self, dt, dh, data, pathDir, dilution):
+        assert self.m_dt == dt
+        assert self.m_dh == dh
+        self.m_pathDta = {}
+        for i, j, md5, dd in data:
+            self.m_pathDta.setdefault(i, [])
+            self.m_pathDta[i].append( (j,md5,dd) )
+        self.m_pathDir = pathDir
+        self.m_dilution = dilution
+        LOGGER.trace('OverflowPointOneTide.loadPath: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))
+
+    def checkPathFiles(self):
+        for ix,dta in self.m_pathDta.items():
+            for iy,md5,dd in dta:
+                fname = 'path-%s.pkl' % (md5)
+                fname = os.path.join(self.m_pathDir, fname)
+                if not os.path.isfile(fname):
+                    LOGGER.warning('Path file not found: %s', fname)
 
 class OverflowPoint(object):
     """
     OverflowPoint
-    Container of OverflowTideResponse
+    Container of OverflowPointOneTide
     All times are UTC
     """
 
-    def __init__(self, name = u'', river = None, dist = 0.0):
+    def __init__(self, name='', river=None, dist=0.0):
         self.m_name    = name
         self.m_river   = river
         self.m_dist2SL = dist
+        self.m_poly    = ()
         self.m_parent  = None
         self.m_tideRsp = []
 
     def __str__(self):
         pstr = None
         if self.m_parent:
-            if isinstance(self.m_parent, basestring):
-                pstr = u'unlinked - %s' % self.m_parent
+            if isinstance(self.m_parent, str):
+                pstr = 'unlinked - %s' % self.m_parent
             else:
                 pstr = self.m_parent.m_name
-        return u'Point: %s; River: %s, Dist=%f, Parent point: %s' % \
-            (self.m_name, 
+        return 'Point: %s; River: %s, Dist=%f, Parent point: %s' % \
+            (self.m_name,
              self.m_river.name if self.m_river else None,
-             self.m_dist2SL, 
+             self.m_dist2SL,
              pstr)
-        
+
     def __getitem__(self, i):
         return self.m_tideRsp[i]
 
     def __iter__(self):
         return self.m_tideRsp.__iter__()
 
-    def __doOverflowReduction(self, t2bdg, t2bds):
+    def __reduceHits(self, t2bdg, t2bds):
         """
         Reduce (max) t2bds in t2bdg
         """
-        #print u'OverflowPoint.__doOverflowReduction'
+        # LOGGER.trace('OverflowPoint.__reduceHits')
         rv = t2bds[0]
-        d = [ 0 if rv[i] < 0 else 1 for i in xrange(len(rv))]
-        if len(t2bdg) <= 0: t2bdg = [ [] for _ in xrange(len(t2bds)) ]
+        if len(t2bdg) <= 0: t2bdg = [ [] for _ in range(len(t2bds)) ]
         assert len(t2bdg) == len(t2bds)
 
         for ov,rv in zip(t2bds, t2bdg):
-            if len(ov) > len(rv): rv.extend( [-1]*(len(ov)-len(rv)) )
-            for i in xrange(len(ov)):
-                rv[i] = max(rv[i], ov[i])
-            d = [ 0 if rv[i] < 0 else 1 for i in xrange(len(rv))]
+            if len(ov) > len(rv): rv.extend( [None]*(len(ov)-len(rv)) )
+            for j in range(len(ov)):
+                if rv[j]:
+                    if ov[j]:
+                        rv[j] = max(rv[j], ov[j])
+                else:
+                    rv[j] = ov[j]
         return t2bdg
 
-    def doOverflow(self, t_start, t_end, dt, tide_tbl, tide_cycles = [], merge_transit_times = False):
+    def getHitsForSpillWindow(self, t_start, t_end, dt, tide_tbl, tide_cycles=(), merge_transit_times=False):
+        """
+        For t in [t_start, t_end] with step dt, compute the hits for all required tide cycles id.
+        Times are UTC
+        Returns:
+            [    # for each river transit time
+                [   # for each exposure window part
+                    [h0, ... hj] hj is Hit for time index j
+                ]
+            ]
+        """
+        LOGGER.trace('OverflowPoint.getHitsForSpillWindow')
+        LOGGER.trace('   from %s', str(t_start))
+        LOGGER.trace('   to   %s', str(t_end))
+        if not tide_cycles:
+            cycles = self.m_tideRsp
+        else:
+            cycles = [ self.getTideResponse(ii) for ii in tide_cycles]
+        LOGGER.trace('OverFlowPoint.getHitsForSpillWindow(): cycles[%d]', len(cycles))
+        for c in cycles:
+            LOGGER.trace('   %s', c)
+
+        # ---  Loop on OverflowTideResponses - result in normalized timedelta
+        t2bdg = []
+        for tideRsp in cycles:
+            if tideRsp:
+                try:
+                    t2bds = tideRsp.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, merge_transit_times)
+                    t2bdg = self.__reduceHits(t2bdg, t2bds)
+                except Exception as e:
+                    LOGGER.exception(e)
+                    LOGGER.warning('OverflowPoint.getHitsForSpillWindow: Skipping cycle %s', tideRsp)
+            else:
+                LOGGER.warning('OverflowPoint.getHitsForSpillWindow: Skipping cycle %s', tideRsp)
+        LOGGER.trace('OverflowPoint.getHitsForSpillWindow: reduced data')
+        LOGGER.trace('    %s', [ 1 if h else 0 for h in t2bdg[0] ] if t2bdg else [])
+
+        return t2bdg
+
+    def doPlumes(self, t_start, t_end, dt, tide_tbl, tide_cycles=()):
+        """
+        For t in [t_start, t_end] with step dt, returns the particule paths
+        as a list of Plume objects.
+        .
+        Times are UTC
+        Returns:
+            [
+                plume1, ...
+            ]
+        """
+        print('doPlumes')
+        print(t_start)
+        print(t_end)
+        print('doPlumes end')
+        hits = self.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, tide_cycles, merge_transit_times=True)
+        assert len(hits) == 1
+
+        # ---
+        res  = []
+        md5s = []
+        for hit in hits[0]:
+            if hit and hit.md5 not in md5s:
+                md5s.append(hit.md5)
+                ptd = hit.pnt
+                ptdTideData = ptd.getTideData()
+                kwargs = {}
+                kwargs['dilution'] = ptdTideData[-1]
+                kwargs['name'] = self.m_parent.m_name if self.m_parent else self.m_name
+                kwargs['poly'] = self.m_parent.m_poly if self.m_parent else self.m_poly
+                kwargs['tide'] = ptdTideData[:2]
+                kwargs['t0']   = t_start + hit.ix*DTA_DELTAT
+                kwargs['tc']   = t_start + hit.iy*DTA_DELTAT
+                #kwargs['dt']   = -1.0
+                kwargs['isDirect']= hit.dd
+                kwargs['plume']   = ptd.getPath(hit.ix, hit.iy)
+                res.append( ASPlume(**kwargs) )
+
+        return res
+
+    def doOverflow(self, t_start, t_end, dt, tide_tbl, tide_cycles=(), merge_transit_times=False):
         """
         For t in [t_start, t_end] with step dt, compute the
         exposure time window to overflow for all required tide cycles id.
@@ -259,37 +436,20 @@ class OverflowPoint(object):
                 ]
             ]
         """
-        logger.debug(u'OverflowPoint.doOverflow: %s %s' % (str(t_start), str(t_end)))
-        if not tide_cycles: 
-            cycles = self.m_tideRsp
-        else:
-            cycles = [ self.getTideResponse(id) for id in tide_cycles]
 
-        res = []
-        for i, tideRsp in enumerate(cycles):
-            if tideRsp:
-                try:
-                    t2bds = tideRsp.doOverflow(t_start, t_end, dt, tide_tbl, merge_transit_times)
-                    res = self.__doOverflowReduction(res, t2bds)
-                except Exception as e:
-                    # if tide_cycles is empty, logging will throw an exception
-                    # but if tide_cycles is empty, we should never arrive here
-                    logger.debug(u'OverflowPoint.doOverflow: Skipping cycle %s' % tide_cycles[i])
-            else:
-                logger.debug(u'OverflowPoint.doOverflow: Skipping cycle %s' % tide_cycles[i])
-        logger.debug(u'OverflowPoint.doOverflow: reduced data')
-        logger.debug(u'    %s' % [ 1 if d > 0 else 0 for d in res[0] ] if res else [])
+        res = self.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, tide_cycles, merge_transit_times)
 
+        # ---  Compact - back to time
         res_new = []
         for r in res:
             i = 0
             lr = len(r)
             ps = []
             while i < lr:
-                while i < lr and r[i] <= 0: i +=1     # first non negativ dilution
+                while i < lr and not r[i]: i += 1     # first Hit
                 p = []
-                while i < lr and (r[i] >  0 or (i+1 < lr and r[i+1] > 0)):  # interpolate simple hole
-                    d = r[i] if r[i] > 0 else (r[i+1]+r[i-1])/2.0
+                while i < lr and (r[i] or (i+1 < lr and r[i+1])):    # interpolate simple hole
+                    d = r[i].a if r[i] else (r[i+1].a+r[i-1].a)/2.0
                     t0 = t_start + i*DTA_DELTAT
                     t1 = t0 + DTA_DELTAT
                     p.append( (t0, t1, d) )
@@ -297,18 +457,17 @@ class OverflowPoint(object):
                 if p: ps.append(p)
             res_new.append(ps)
 
-        #for r in res_new[0]: print u'%3i' % len(r), r[0], r[-1]
         return res_new
 
     def dump(self):
         if self.m_river:
-            return u'%s; %s; %f' % (self.m_name, self.m_river.name, self.m_dist2SL)
+            return '%s; %s; %f' % (self.m_name, self.m_river.name, self.m_dist2SL)
         else:
-            return u'%s' % (self.m_name)
+            return '%s' % (self.m_name)
 
     def __decodeRiver(self, data, rivers):
-        #logger.debug(u'OverflowPoint.__decodeRiver: %s (%s)' % (data, self))
-        tks = data.split(u';')
+        #LOGGER.trace('OverflowPoint.__decodeRiver: %s (%s)' % (data, self))
+        tks = data.split(';')
         if len(tks) == 1:
             self.m_name  = tks[0].strip()
             self.m_river = None
@@ -325,44 +484,92 @@ class OverflowPoint(object):
         else:
             raise ValueError
 
-    def __decodeTide(self, datas):
-        #logger.debug(u'OverflowPoint.__decodeTide: %s (%s)' % (self.m_name, self))
+    def __decodeTide(self, data, dataDir, dilution):
+        LOGGER.trace('OverflowPoint.__decodeTide: %s (%s)' % (self.m_name, self))
         self.m_tideRsp = []
-        for data in datas:
-            tk_dt_dh, tk_tide = data.split(';')[1:3]
+        for item in data:
+            tk_dt_dh, tk_tide = item.split(';')[1:3]
             dt_dh = eval(tk_dt_dh)
-            tide  = eval(tk_tide)
-            
-            o = OverflowTideResponse(self.m_river, self.m_dist2SL)
-            o.load(dt_dh[0], dt_dh[1], tide)
+            tid   = eval(tk_tide)
+
+            o = OverflowPointOneTide(self.m_river, self.m_dist2SL)
+            o.loadTide(dt_dh[0], dt_dh[1], tid, dataDir, dilution)
             self.m_tideRsp.append(o)
 
-    def load(self, data, rivers):
-        #logger.debug(u'OverflowPoint.load: %s' % (self))
+    def __decodePath(self, data, pathDir, dilution):
+        LOGGER.trace('OverflowPoint.__decodePath: %s (%s)' % (self.m_name, self))
+        for item in data:
+            tk_dt_dh, tk_path = item.split(';')[1:3]
+            dt_dh = eval(tk_dt_dh)
+            pth  = eval(tk_path)
+
+            o = self.__getTideResponse(dt_dh[0], dt_dh[1])
+            o.loadPath(dt_dh[0], dt_dh[1], pth, pathDir, dilution)
+
+    def __decodePoly(self, data, pathDir, dilution):
+        LOGGER.trace('OverflowPoint.__decodePoly: %s (%s)' % (self.m_name, self))
+        for item in data:
+            tk_poly = item.split(';')[1]
+            poly = eval(tk_poly)
+            self.m_poly = poly
+
+    def load(self, data, rivers, dataDir, dilution):
+        LOGGER.trace('OverflowPoint.load: %s' % (self))
         self.__decodeRiver(data[0], rivers)
-        if len(data) > 1:
-            self.__decodeTide(data[1:])
+
+        subDir = self.m_name
+        pathDir = os.path.join(dataDir, subDir)
+
+        if data[1]:
+            self.__decodeTide(data[1], dataDir, dilution)
+        if data[2]:
+            self.__decodePath(data[2], pathDir, dilution)
+        if data[3]:
+            self.__decodePoly(data[3], pathDir, dilution)
 
     def resolveLinks(self, points):
         """
         Translate parent name to object
-        Copy OverflowTideResponse from parent
+        Copy OverflowPointOneTide from parent
         """
         if self.m_parent:
             self.m_parent = points[self.m_parent]
             for m in self.m_parent.m_tideRsp:
-                o = OverflowTideResponse(self.m_river, self.m_dist2SL)
+                o = OverflowPointOneTide(self.m_river, self.m_dist2SL)
                 o.setTideData( *m.getTideData() )
                 self.m_tideRsp.append(o)
 
-    def getTideResponse(self, id):
+    def checkPathFiles(self):
+        """
+        Check the presence of the path files
+        """
+        try:
+            self.m_parent.m_name
+        except AttributeError:
+            for m in self.m_tideRsp:
+                m.checkPathFiles()
+
+    def __getTideResponse(self, td, th):
+        """
+        Returns the tide with
+        tide duration td and
+        tide height th
+        """
+        o = OverflowPointOneTide()
+        o.setTideData(td, th)
+        tid = o.getId()
+        for m in self.m_tideRsp:
+            if tid == m.getId(): return m
+        return None
+
+    def getTideResponse(self, tid):
         """
         Returns the tide with id
         """
         for m in self.m_tideRsp:
-            if id == m.getId(): return m
+            if tid == m.getId(): return m
         return None
-        
+
     def getTides(self):
         """
         Returns the list of all tides Id
@@ -375,7 +582,8 @@ class OverflowPoints(object):
     """
 
     def __init__(self):
-        self.m_dataDir = u''
+        self.m_dataDir  = ''
+        self.m_dilution = -1.0
         self.m_pnts = {}
 
     def load(self, dataDir, rivers):
@@ -383,60 +591,112 @@ class OverflowPoints(object):
         Load configuration from file
         """
         points = {}
+        diltgt = -1.0
 
         # ---  Read river and link data
         fname = os.path.join(dataDir, 'overflow.river.txt')
+        LOGGER.info('OverflowPoints: load river data: %s', fname)
         f = codecs.open(fname, "r", encoding="utf-8")
         for l in f.readlines():
             l = l.strip()
-            if l[0] == u'#': continue
+            if l[0] == '#': continue
             try:
-                st = l.split(u';')[0]
-                points[st] = [l]
+                st = l.split(';')[0]
+                points[st] = [l, [], [], []]    # [river, tide, path, poly]
             except ValueError as e:
-                msg = [u'Exception: %s' % str(e),
-                       u'Reading file: %s' % fname,
-                       u'Reading line: %s' % l]
-                raise ValueError( u'\n'.join(msg) )
-        f.close
+                msg = ['Exception: %s' % str(e),
+                       'Reading file: %s' % fname,
+                       'Reading line: %s' % l]
+                raise ValueError( '\n'.join(msg) )
+        f.close()
 
         # ---  Read tide data
         fname = os.path.join(dataDir, 'overflow.tide.txt')
+        LOGGER.info('OverflowPoints: load tide data: %s', fname)
         f = codecs.open(fname, "r", encoding="utf-8")
         for l in f.readlines():
             l = l.strip()
             if not l: continue
-            if l[0] == u'#': continue
+            if l[0] == '#': 
+                if l.find('Dilution threshold is') > 0: 
+                    tk_dl = l[1:].split()[-1]
+                    diltgt = float(tk_dl)
+            else:    
+                try:
+                    st = l.split(';')[0]
+                    points[st][1].append(l)
+                except ValueError as e:
+                    msg = ['Exception: %s' % str(e),
+                           'Reading file: %s' % fname,
+                           'Reading line: %s' % l]
+                    raise ValueError( '\n'.join(msg) )
+        f.close()
+
+        # ---  Read path data
+        fname = os.path.join(dataDir, 'overflow.path.txt')
+        LOGGER.info('OverflowPoints: load poly data: %s', fname)
+        f = codecs.open(fname, "r", encoding="utf-8")
+        for l in f.readlines():
+            l = l.strip()
+            if not l: continue
+            if l[0] == '#': 
+                if l.find('Dilution threshold is') > 0: 
+                    tk_dl = l[1:].split()[-1]
+                    diltgt = float(tk_dl)
+            else:
+                try:
+                    st = l.split(';')[0]
+                    points[st][2].append(l)
+                except ValueError as e:
+                    msg = ['Exception: %s' % str(e),
+                           'Reading file: %s' % fname,
+                           'Reading line: %s' % l]
+                    raise ValueError( '\n'.join(msg) )
+        f.close()
+
+        # ---  Read stations polygons
+        fname = os.path.join(dataDir, 'overflow.poly.txt')
+        LOGGER.info('OverflowPoints: load path data: %s', fname)
+        f = codecs.open(fname, "r", encoding="utf-8")
+        for l in f.readlines():
+            l = l.strip()
+            if not l: continue
+            if l[0] == '#': continue
             try:
                 st = l.split(';')[0]
-                points[st].append(l)
+                points[st][3].append(l)
             except ValueError as e:
-                msg = [u'Exception: %s' % str(e),
-                       u'Reading file: %s' % fname,
-                       u'Reading line: %s' % l]
-                raise ValueError( u'\n'.join(msg) )
-        f.close
+                msg = ['Exception: %s' % str(e),
+                       'Reading file: %s' % fname,
+                       'Reading line: %s' % l]
+                raise ValueError( '\n'.join(msg) )
+        f.close()
 
         # ---  Create points
-        for k, v in points.iteritems():
-            #logger.debug(u'OverflowPoints.load: create point %s (%s)' % (k, len(v)))
+        for k, v in points.items():
+            #LOGGER.debug('OverflowPoints.load: create point %s (%s)' % (k, len(v)))
             try:
                 p = OverflowPoint()
-                p.load(v, rivers)
+                p.load(v, rivers, dataDir, diltgt)
                 self.m_pnts[p.m_name] = p
             except ValueError as e:
-                msg = [u'Exception: %s' % str(e),
-                       u'Decoding point: %s' % k,
-                       u'Data: %s' % v]
-                raise ValueError( u'\n'.join(msg) )
+                msg = ['Exception: %s' % str(e),
+                       'Decoding point: %s' % k,
+                       'Data: %s' % v]
+                raise ValueError( '\n'.join(msg) )
 
         # ---  Make the links
-        for p in self.m_pnts.itervalues():
+        for p in self.m_pnts.values():
             p.resolveLinks(self)
 
         # ---  Keep the data directory
-        self.m_dataDir = dataDir
-            
+        self.m_dataDir  = dataDir
+        self.m_dilution = diltgt
+
+    def checkPathFiles(self):
+        for p in self.m_pnts.values():
+            p.checkPathFiles()
+
     def getInfo(self):
         """
         Returns the data info.
@@ -448,12 +708,12 @@ class OverflowPoints(object):
         f = codecs.open(fname, "r", encoding="utf-8")
         for l in f.readlines():
             l = l.strip()
-            if l[0] == u'#' and len(l) > 1:
+            if l[0] == '#' and len(l) > 1:
                 info.append(l[1:])
-        f.close
+        f.close()
 
         return info
-            
+
     def getNames(self):
         """
         Returns the list of all overflow points
@@ -465,9 +725,18 @@ class OverflowPoints(object):
 
 
 if __name__ == '__main__':
+    import sys
+    selfDir = os.path.dirname( os.path.abspath(__file__) )
+    supPath = os.path.normpath( os.path.join(selfDir, '..') )
+    if os.path.isdir(supPath) and supPath not in sys.path: sys.path.append(supPath)
+
     import pytz
-    import river
-    import tide
+    import addLogLevel
+    addLogLevel.addLoggingLevel('TRACE', logging.DEBUG - 5)
+
+    import ASModel.river as river
+    import ASModel.tide  as tide
+
     def loadTides(path):
         tbl = tide.TideTable()
         tbl.load(path)
@@ -481,64 +750,74 @@ if __name__ == '__main__':
         tbl.load(path, rivers)
         return tbl
 
-    logHndlr = logging.StreamHandler()
-    FORMAT = "%(asctime)s %(levelname)s %(message)s"
-    logHndlr.setFormatter( logging.Formatter(FORMAT) )
+    def main():
+        logHndlr = logging.StreamHandler()
+        # FORMAT = "%(asctime)s %(levelname)s %(message)s"
+        FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    logger = logging.getLogger("INRS.ASModel.station")
-    logger.addHandler(logHndlr)
-    logger.setLevel(logging.DEBUG)
+        LOGGER = logging.getLogger("INRS.ASModel.station")
+        LOGGER.addHandler(logHndlr)
+        LOGGER.setLevel(logging.DEBUG)
 
-    #tbl1 = downloadTables()
-    #tbl2 = loadStations()
-    #for r1, r2 in zip(tbl1.tbl, tbl2.tbl):
-    #    if r1 != r2:
-    #        print r1, r2
-    #        break
-    #readTimes('tide_times.pkl')
+        #tbl1 = downloadTables()
+        #tbl2 = loadStations()
+        #for r1, r2 in zip(tbl1.tbl, tbl2.tbl):
+        #    if r1 != r2:
+        #        print r1, r2
+        #        break
+        #readTimes('tide_times.pkl')
 
-    path = u'../../BBData_v3.1/data.lim=1e-4'
-    tides  = loadTides (path)
-    rivers = loadRivers(path)
-    points = loadPoints(path, rivers)
+        #fpath = '../BBData_v3.2/data.lim=1e-4'
+        fpath = r'E:\Projets_simulation\VilleDeQuebec\Beauport\Simulation\PIO\BBData_v1812\data.lim=1.0e-06'
+        tides  = loadTides (fpath)
+        rivers = loadRivers(fpath)
+        points = loadPoints(fpath, rivers)
+        # points.checkPathFiles()
 
-    #for p in points.getNames():
-    #    pp = points[p]
-    #    print pp.name
-    #    print '   ', pp.river
-    #    print '   ', pp.dist2SL
-    #    print '   ', pp.parent.name if pp.parent else pp.parent
-    #    print '   ', pp.tideDta
+        #for p in points.getNames():
+        #    pp = points[p]
+        #    print pp.name
+        #    print '   ', pp.river
+        #    print '   ', pp.dist2SL
+        #    print '   ', pp.parent.name if pp.parent else pp.parent
+        #    print '   ', pp.tideDta
 
-    t0 = datetime.datetime.now(tz=pytz.utc).replace(hour=5,minute=0,second=0,microsecond=0)
-    t0 = t0 + datetime.timedelta(hours=0, minutes= 0)
-    t1 = t0 + datetime.timedelta(hours=2, minutes= 0)
-    dt = datetime.timedelta(seconds=5*60)
-    print 't0: ', t0.isoformat()
-    print 't1: ', t1.isoformat()
+        t0 = datetime.datetime.now(tz=pytz.utc).replace(day=12,hour=20,minute=20,second=0,microsecond=0)
+        t0 = t0 + datetime.timedelta(hours=0, minutes= 0)
+        t1 = t0 + datetime.timedelta(hours=2, minutes= 0)
+        dt = datetime.timedelta(seconds=5*60)
+        print('t0: ', t0.isoformat())
+        print('t1: ', t1.isoformat())
 
-    dtmax = t0
-    for p in [u'BBE-MOU-003']: # points.getNames():
-        cycles = points[p].getTides()[3:4]
-        print 'Overflow point:', points[p], cycles
+        dtmax = t0
+        for p in ['BBE-STL-003']: # points.getNames():
+            cycles = points[p].getTides()[-2:-1]
+            print('Overflow point:', points[p])
 
-        dtaPt = points[p].doOverflow(t0, t1, dt, tides, tide_cycles = cycles, merge_transit_times = False)
-        for it, dtaTr in enumerate(dtaPt):
-            for dtaXpo in dtaTr:
-                for t0_, t1_, a in dtaXpo:
-                    print t0_, t1_, a
-                print '-----'
+            # dtaPt = points[p].doOverflow(t0, t1, dt, tides, tide_cycles = cycles, merge_transit_times = False)
+            # for it, dtaTr in enumerate(dtaPt):
+            #     for dtaXpo in dtaTr:
+            #         for t0_, t1_, a in dtaXpo:
+            #             print(t0_, t1_, a)
+            #         print('-----')
 
-        #for c in cycles:
-        #    print c
-        #    dtaPt = points[p].doOverflow(t0, t1, dt, tides, tide_cycles = [c])
-        #    for it, dtaTr in enumerate(dtaPt):
-        #        print '   ', it, dtaTr
-        #        for dtaXpo in dtaTr:
-        #            print dtaXpo
-        #            if not dtaXpo: continue
-        #            dtmin_arr = dtaXpo[ 0][0]
-        #            dtmax_arr = dtaXpo[-1][0]
-        #            if dtmax_arr: dtmax = max(dtmax, dtmax_arr)
-        #            print '      ', dtmin_arr, dtmax_arr
-    #print dtmax
+            plumes = points[p].doPlumes(t0, t1, dt, tides, tide_cycles = cycles)
+            for plume in plumes:
+                print(repr(plume))
+
+            #for c in cycles:
+            #    print c
+            #    dtaPt = points[p].doOverflow(t0, t1, dt, tides, tide_cycles = [c])
+            #    for it, dtaTr in enumerate(dtaPt):
+            #        print '   ', it, dtaTr
+            #        for dtaXpo in dtaTr:
+            #            print dtaXpo
+            #            if not dtaXpo: continue
+            #            dtmin_arr = dtaXpo[ 0][0]
+            #            dtmax_arr = dtaXpo[-1][0]
+            #            if dtmax_arr: dtmax = max(dtmax, dtmax_arr)
+            #            print '      ', dtmin_arr, dtmax_arr
+        #print dtmax
+
+    main()
