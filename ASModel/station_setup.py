@@ -28,7 +28,6 @@ from Cython.Build import cythonize
 extensions = [
     Extension('station',
         ['station.py'],
-        include_dirs = ['C:/Program Files/Python27/Lib/site-packages/Cython/Includes/cpython'],
         )
 ]
 

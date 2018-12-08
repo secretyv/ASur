@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #************************************************************************
-# --- Copyright (c) INRS 2016
-# --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -16,6 +15,7 @@
 # --- See the License for the specific language governing permissions and
 # --- limitations under the License.
 #************************************************************************
+
 try:
     from setuptools import setup
     from setuptools import Extension
@@ -25,12 +25,12 @@ except ImportError:
 from Cython.Build import cythonize
 
 extensions = [
-    Extension('.tide',
-        ['tide.py'],
+    Extension('overflow',
+        ['overflow.py'],
         )
 ]
 
 setup(
-    name = 'tide',
+    name = 'overflow',
     ext_modules = cythonize(extensions),
 )
