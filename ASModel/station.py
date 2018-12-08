@@ -40,7 +40,7 @@ DTA_DELTAT = datetime.timedelta(seconds=DTA_DELTAS)
 def nint(d):
     return int(d + 0.5)
 
-class Hit(object):
+class Hit:
     def __init__(self, ix=-1, iy=-1, a=-1.0, md5='', dd=False, pnt=None):
         self.ix = ix
         self.iy = iy
@@ -292,7 +292,7 @@ class OverflowPointOneTide(object):
                 if not os.path.isfile(fname):
                     LOGGER.warning('Path file not found: %s', fname)
 
-class OverflowPoint(object):
+class OverflowPoint:
     """
     OverflowPoint
     Container of OverflowPointOneTide
@@ -364,8 +364,8 @@ class OverflowPoint(object):
         else:
             cycles = [ self.getTideResponse(ii) for ii in tide_cycles]
         LOGGER.trace('OverFlowPoint.getHitsForSpillWindow(): cycles[%d]', len(cycles))
-        for c in cycles:
-            LOGGER.trace('   %s', c)
+        for tideRsp in cycles:
+            LOGGER.trace('   %s', tideRsp)
 
         # ---  Loop on OverflowTideResponses - result in normalized timedelta
         t2bdg = []
@@ -576,7 +576,7 @@ class OverflowPoint(object):
         """
         return [ m.getId() for m in sorted( self.m_tideRsp ) ]
 
-class OverflowPoints(object):
+class OverflowPoints:
     """
     Container of OverflowPoint
     """

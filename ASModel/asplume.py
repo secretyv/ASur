@@ -23,7 +23,7 @@ import logging
 
 LOGGER = logging.getLogger("INRS.ASModel.plume")
 
-class ASPlume(object):
+class ASPlume:
     """
     Structure to hold all information pertaining to a
     particle path (plume)
