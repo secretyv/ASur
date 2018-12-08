@@ -26,6 +26,7 @@ Utilitaries allow to download the data from MPO site
 import bisect
 import codecs
 import datetime
+import dateutil
 import logging
 import os
 import time
@@ -35,7 +36,7 @@ import pytz
 import dateutil.parser
 
 # Obscur bug in dateutil.parser
-# http://stackoverflow.com/questions/21296475/python-dateutil-unicode-warning
+# http://stackoverflow.com/questions/21296475/python-dateutil-str-warning
 warnings.filterwarnings("ignore", category=UnicodeWarning)
 
 logger = logging.getLogger("INRS.ASModel.tide")
@@ -43,31 +44,15 @@ logger = logging.getLogger("INRS.ASModel.tide")
 def nint(d):
     return int(d + 0.5)
 
-class FixedOffset(datetime.tzinfo):
-    """Fixed offset in minutes east from UTC."""
-
-    def __init__(self, offset, name):
-        self.__offset = datetime.timedelta(minutes = offset)
-        self.__name = name
-
-    def utcoffset(self, dt):
-        return self.__offset
-
-    def tzname(self, dt):
-        return self.__name
-
-    def dst(self, dt):
-        return 0
-
-
-class DataReaderMPO(object):
+class DataReaderMPO:
     """
     DAta reader for MPO tide tables
     """
     def __init__(self, station = -1, year = datetime.date.today().year):
         self.station = station
         self.year    = year
-        self.tzinfo  = FixedOffset(-5*60, 'HNE')
+        #self.tzinfo  = FixedOffset(-5*60, 'HNE')
+        self.tzinfo  = dateutil.tzoffset('HNE', -5*60)
 
     def __buildURL(self):
         y = self.year
@@ -146,7 +131,7 @@ class DataReaderMPO(object):
 
         return self.__readData(p)
 
-class TideRecord(object):
+class TideRecord:
     """
     A TideRecord is either a HW or LW time stamp.
     """
@@ -193,7 +178,7 @@ class TideRecord(object):
         self.dt = dateutil.parser.parse(dt)
         self.wl = float(wl)
 
-class TideTable(object):
+class TideTable:
     """
     A TideTable is a sequence of TideRecords
     """
