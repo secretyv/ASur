@@ -1,12 +1,19 @@
 ::
 setlocal
-call setup_python27_32.bat
-call setup_vc_x86_for_python.bat
+
+set CC=%INRS_BLD%\compile_cython
 
 :: ---  Génère ASModel
-call compile_cython.bat ASModel_setup.py
-call compile_cython.bat ASPlot_setup.py
-call compile_cython.bat ASParam_setup.py
+call %CC%.bat ASModel.pxd
+
+:: ---  Génère ASur
+:: call %CC%.bat ASConst.pxd
+:: call %CC%.bat ASGlobalParameters.pxd
+:: call %CC%.bat ASModel.pxd
+:: call %CC%.bat ASPathParameters.pxd
+:: call %CC%.bat ASPathParametersEnum.pxd
+:: call %CC%.bat ASTranslator.pxd
+:: call %CC%.bat ASur.pxd
 
 :: ---  Cython ASur en executable
 ::call compile2exe_x86_cython.bat ASur
