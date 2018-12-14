@@ -19,6 +19,7 @@
 """
 """
 
+from datetime import datetime 
 import logging
 
 LOGGER = logging.getLogger("INRS.ASModel.plume")
@@ -28,7 +29,15 @@ class ASPlume:
     Structure to hold all information pertaining to a
     particle path (plume)
     """
-    def __init__(self, dilution=-1.0, name='', poly=None, tide=(), t0=-1, tc=-1, isDirect=False, plume=None):
+    def __init__(self, 
+                 dilution=-1.0, 
+                 name='', 
+                 poly=[], 
+                 tide=(-1,-1), 
+                 t0=datetime.now(),
+                 tc=datetime.now(), 
+                 isDirect=False, 
+                 plume=None):
         self.dilution       = dilution  # 
         self.stationName    = name      # string
         self.stationPolygon = poly      # sequence of (x, y) 

@@ -32,7 +32,7 @@ class River:
     Class River represent a river in ASModel. A River has a name
     and flow velocities.
     """
-    def __init__(self, name='', velocity=()):
+    def __init__(self, name='', velocity=[]):
         self.name = name
         self.vlct = velocity
 
