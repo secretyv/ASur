@@ -82,7 +82,7 @@ if getattr(sys, 'frozen', False):
 else:
     ICON_ROOT = os.path.join(os.path.dirname(__file__), 'bitmaps')
 
-hlpTxt = u"""
+hlpTxt = """
 Détermination de la fenêtre des temps d'arrivée d'une surverse
 
 Principe
@@ -765,7 +765,7 @@ class ASur(wx.Frame):
         self.__fillPoints()
         # ---  Set title
         #dn = os.path.basename(dirname)
-        #self.SetTitle(u"%s - %s" % (appTitle, dn))
+        #self.SetTitle("%s - %s" % (appTitle, dn))
 
         self.dirname = dirname
         self.history.AddFileToHistory(self.dirname)
@@ -978,7 +978,7 @@ class ASur(wx.Frame):
         infoDlg = wx_adv.AboutDialogInfo()
         #infoDlg.Name = appTitle
         infoDlg.Name = '\n'.join(['%s %s' % (appName, __version__), appTitle])
-        infoDlg.Copyright = '(C) 2016-2018 INRS'
+        infoDlg.Copyright = __copyright__
         infoDlg.Description = wx_ww.wordwrap(hlpTxt, 450, wx.ClientDC(self))
         wx_adv.AboutBox(infoDlg)
 
