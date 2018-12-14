@@ -22,9 +22,15 @@ Translator, providing two ways mapping between strings.
 The variable translator is a "singleton", accessible by import of the module
 """
 
+import codecs
 import logging
 import traceback
 
+try:
+    import addLogLevel
+    addLogLevel.addLoggingLevel('TRACE', logging.DEBUG - 5)
+except AttributeError:
+    pass
 LOGGER = logging.getLogger("INRS.ASur.translator")
 
 class ASTranslator:
@@ -40,9 +46,12 @@ class ASTranslator:
 
     def loadFromFile(self, fname):
         """
-        Load key=value lines from file fname.
+        Load 
+            key=value or 
+            key=(value, help) 
+        lines from file fname.
         """
-        with open(fname, 'rt') as ifs:
+        with codecs.open(fname, "r", encoding="utf-8") as ifs:
             for l in ifs.readlines():
                 l = l.strip()
                 if not l: continue
@@ -51,7 +60,14 @@ class ASTranslator:
                     k, v = l.split('=', 1)
                     k = k.strip()
                     v = v.strip()
-                    self.dicoDir[k] = v
+                    try:
+                        v, h = eval(v, {}, {})
+                    except (NameError, SyntaxError):
+                        h = ''
+                        pass
+                    v = v.strip()
+                    h = h.strip()
+                    self.dicoDir[k] = (v, h)
                     self.dicoRev[v] = k
                 except Exception as e:
                     LOGGER.warning('Invalid entry: %s', l)
@@ -61,13 +77,13 @@ class ASTranslator:
         """
         Syntactic suggar for translateDirect
         """
-        return self.dicoDir.get(k, k)
+        return self.dicoDir.get(k, (k, '') )
             
     def translateDirect(self, k):
         """
         Direct translation, return value associated with key k
         """
-        return self.dicoDir.get(k, k)
+        return self.dicoDir.get(k, (k, '') )
 
     def translateInverse(self, v):
         """
@@ -80,7 +96,15 @@ translator = ASTranslator()
 
 if __name__ == "__main__":
     def main():
-        fname = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v3.2\overflow-tbl.txt'
+        logHndlr = logging.StreamHandler()
+        FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        logHndlr.setFormatter( logging.Formatter(FORMAT) )
+
+        LOGGER.addHandler(logHndlr)
+        LOGGER.setLevel(logging.TRACE)
+
+        #fname = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v3.2\overflow-tbl.txt'
+        fname = r'E:\Projets_simulation\VilleDeQuebec\Beauport\ASur\Exutoire_à_Corpo.atf'
         tr = ASTranslator(fname)
         print(tr['BBE-MOU-003'])
 
