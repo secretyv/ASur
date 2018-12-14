@@ -4,36 +4,51 @@ import glob
 import os
 from PyInstaller.utils.hooks import collect_submodules
 
+def findFileInPath(f):
+    paths = os.environ['PATH'].split(os.pathsep)
+    for p in paths:
+        fp = os.path.join(p, f)
+        if os.path.isfile(fp):
+            return p
+    return '' 
+
 block_cipher = None
 
 ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\ASur'
 
 ASCmp = ['tide', 'river', 'station', 'overflow', 'asplume', 'asclass', 'asapi', '__init__']
-ASModel_hiddenimports = [ 'ASModel.'+c for c in ASCmp[0:5] ]
+ASModel_hiddenimports = [
+    'ASModel.'+c for c in ASCmp[:-1] 
+    ]
+ASModel_binaries = [ 
+    ]
 ASModel_data = [ 
-    (r'LICENSE', '.'),
+    ('LICENSE',             '.'),
     ('bitmaps/*.png',       'bitmaps'),
     ('bitmaps/LICENSE.TXT', 'bitmaps'),
     ('background',          'background'),
     ('traduction',          'traduction'),
+    (findFileInPath('gdalsrsinfo.exe'), '.'),
+    (findFileInPath('gdalwarp.exe'),    '.'),
     ]
 
+    
 python_hiddenimports = [
     'gdal',
     'pytimeparse',
     ]
 
 pb2_a = Analysis(['ASur.py'],
-             pathex  = [os.path.join(ROOTDIR, 'ASModel')],
-             binaries       = [],
-             datas          = ASModel_data,
-             hiddenimports  = ASModel_hiddenimports + python_hiddenimports,
-             hookspath      = [],
-             runtime_hooks  = [],
-             excludes       = [],
-             win_no_prefer_redirects=False,
-             win_private_assemblies =False,
-             cipher=block_cipher)
+                 pathex  = [os.path.join(ROOTDIR, 'ASModel')],
+                 binaries       = ASModel_binaries,
+                 datas          = ASModel_data,
+                 hiddenimports  = ASModel_hiddenimports + python_hiddenimports,
+                 hookspath      = [],
+                 runtime_hooks  = [],
+                 excludes       = [],
+                 win_no_prefer_redirects=False,
+                 win_private_assemblies =False,
+                 cipher=block_cipher)
 
 pb2_pyz = PYZ(pb2_a.pure,
               pb2_a.zipped_data,

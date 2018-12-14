@@ -22,8 +22,6 @@
 Modèle de temps d'arrivée de surverses
 """
 
-from __about__ import __author__, __version__, __copyright__
-
 import datetime
 import enum
 import logging
@@ -54,6 +52,7 @@ if os.path.isdir(supPath):
 else:
     raise
 
+from __about__ import __author__, __version__, __copyright__
 from ASGlobalParameters import ASGlobalParameters
 from ASPanelScenario  import ASPanelScenario
 from ASPanelPlot      import ASPanelPlot
@@ -155,7 +154,7 @@ class ASur(wx.Frame):
     CLC_DELTAS = 300
     CLC_DELTAT = datetime.timedelta(seconds=CLC_DELTAS)
 
-    ID_MDL = [ wx.Window.NewControlId() for i in range(9)]
+    # ID_MDL = [ wx.Window.NewControlId() for i in range(9)]
 
     def __init__(self, *args, **kwds):
         self.appMode = kwds.pop("appMode", GlbModes.standard)
@@ -191,7 +190,7 @@ class ASur(wx.Frame):
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_add,   self.mnu_file_add)
         self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_hist, id=wx.ID_FILE1, id2=wx.ID_FILE9)
         # TODO : il faut regenerer les ID à chaque appel
-        self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_xone, id=self.ID_MDL[0], id2=self.ID_MDL[-1])
+        # self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_xone, id=self.ID_MDL[0], id2=self.ID_MDL[-1])
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_close, self.mnu_file_close)
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_quit,  self.mnu_file_quit)
         self.Bind(wx.EVT_MENU,      self.on_mnu_parm_maree, self.mnu_parm_maree)
@@ -412,10 +411,15 @@ class ASur(wx.Frame):
     def __fillModelMenu(self):
         for item in self.bbmdl_mnu.GetMenuItems():
             self.bbmdl_mnu.Delete(item)
-        for id, bbModel in enumerate(self.bbModels):
+        id_mdl = []
+        for bbModel in self.bbModels:
             fpath = bbModel.getDataDir()
             label = os.path.basename(fpath)
-            self.bbmdl_mnu.Append(self.ID_MDL[id], label, helpString=fpath)
+            id = wx.Window.NewControlId()
+            self.bbmdl_mnu.Append(id, label, helpString=fpath)
+            id_mdl.append(id)
+        if id_mdl:
+            self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_xone, id=id_mdl[0], id2=id_mdl[-1])
 
     def __fillPoints(self):
         addTides = self.appMode is GlbModes.expert
@@ -940,7 +944,7 @@ class ASur(wx.Frame):
             dlg.Destroy()
 
     def on_btn_parm_path(self, event):
-        self.LOGGER.info('ASur.on_btn_parm_path')
+        self.LOGGER.trace('ASur.on_btn_parm_path')
         prm = self.dlgParamPath.getParameters()
 
         self.prmsCfg.DeleteGroup('/PathParameters')
@@ -1099,7 +1103,9 @@ if __name__ == "__main__":
         if options.lcl: translator.loadFromFile(options.lcl)
 
         # --- Crée l'app
-        appMode = GlbModes.expert if options.xpr else GlbModes.standard
+        appMode = GlbModes.debug  if options.dbg else GlbModes.standard
+        appMode = GlbModes.expert if options.xpr else appMode
+        print(appMode)
         app, err = createASurApp(appMode=appMode)
 
         # --- Go
