@@ -1,0 +1,14 @@
+!table 
+!version 300 
+!charset WindowsLatin1 
+ 
+Definition Table 
+   File "21l14102.tif" 
+   Type "RASTER" 
+ (247494.000, 5193110.000) (0,0) Label "PT_ag  UL", 
+ (266692.000, 5193110.000) (9599,0) Label "PT_ag  UR", 
+ (266692.000, 5179054.000) (9599,7028) Label "PT_ag  LR", 
+ (247494.000, 5179054.000) (0,7028) Label "PT_ag  LL" 
+ CoordSys Earth Projection 8, 74, 7, -70.500000, 0.000000, 0.999900, 304800.000000, 0.000000 
+ Units "m" 
+ 
