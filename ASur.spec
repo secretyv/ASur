@@ -6,15 +6,22 @@ from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 
-ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\PaBeau'
+ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\ASur'
 
-ASCmp = ['tide', 'river', 'station', 'asclass', 'asapi', '__init__']
+ASCmp = ['tide', 'river', 'station', 'overflow', 'asplume', 'asclass', 'asapi', '__init__']
 ASModel_hiddenimports = [ 'ASModel.'+c for c in ASCmp[0:5] ]
-#ASModel_data          = [ (r'ASModel\BBData', 'BBData'), (r'LICENSE', '.') ]
-ASModel_data          = [ (r'LICENSE', '.') ]
+ASModel_data = [ 
+    (r'LICENSE', '.'),
+    ('bitmaps/*.png',       'bitmaps'),
+    ('bitmaps/LICENSE.TXT', 'bitmaps'),
+    ('background',          'background'),
+    ('traduction',          'traduction'),
+    ]
 
-python_hiddenimports = [ 'tzlocal', 'numpy', 'matplotlib', 'FileDialog', 'mpldatacursor', 'wxmpl', 'mechanize', 'appdirs', 'packaging' ]
-python_hiddenimports += collect_submodules('pkg_resources._vendor')
+python_hiddenimports = [
+    'gdal',
+    'pytimeparse',
+    ]
 
 pb2_a = Analysis(['ASur.py'],
              pathex  = [os.path.join(ROOTDIR, 'ASModel')],
