@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #************************************************************************
-# --- Copyright (c) INRS 2016
-# --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -16,22 +15,22 @@
 # --- See the License for the specific language governing permissions and
 # --- limitations under the License.
 #************************************************************************
+from distutils.core      import setup
+from distutils.extension import Extension
+from Cython.Build        import cythonize
+from Cython.Distutils    import build_ext
 
-try:
-    from setuptools import setup
-    from setuptools import Extension
-except ImportError:
-    from distutils.core import setup
-    from distutils.extension import Extension
-from Cython.Build import cythonize
+import os
+pkg_name = os.path.splitext( os.path.basename(__file__) ) [0]
 
-extensions = [
-    Extension('asapi',
-        ['asapi.py'],
+ext_modules = [
+    Extension(pkg_name,
+        [pkg_name+'.py'],
         )
 ]
 
 setup(
-    name = 'asapi',
-    ext_modules = cythonize(extensions),
+  name = pkg_name,
+  cmdclass = {'build_ext': build_ext},
+  ext_modules = cythonize(ext_modules, language_level=3),
 )
