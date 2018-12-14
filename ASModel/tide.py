@@ -20,18 +20,19 @@
 """
 Tide table
 A tide table is made of tide records, LW or HW.
-Utilitaries allow to download the data from MPO site
 """
 
 import bisect
 import codecs
+import contextlib
 import datetime
 import dateutil
+import glob
 import logging
 import os
 import time
 import warnings
-import mechanicalsoup
+import requests
 import pytz
 import dateutil.parser
 
@@ -39,97 +40,10 @@ import dateutil.parser
 # http://stackoverflow.com/questions/21296475/python-dateutil-str-warning
 warnings.filterwarnings("ignore", category=UnicodeWarning)
 
-logger = logging.getLogger("INRS.ASModel.tide")
+LOGGER = logging.getLogger("INRS.ASModel.tide")
 
 def nint(d):
     return int(d + 0.5)
-
-class DataReaderMPO:
-    """
-    DAta reader for MPO tide tables
-    """
-    def __init__(self, station = -1, year = datetime.date.today().year):
-        self.station = station
-        self.year    = year
-        #self.tzinfo  = FixedOffset(-5*60, 'HNE')
-        self.tzinfo  = dateutil.tzoffset('HNE', -5*60)
-
-    def __buildURL(self):
-        y = self.year
-        i = self.station
-        url = 'http://www.waterlevels.gc.ca/fra/donnees/tableau/%i/wlev_sec/%i' % (y, i)
-        return url
-
-    def __skipToLine(self, f, tgt):
-        l = ''
-        while True:
-            l = f.readline()
-            if not l: break
-            if l.strip() == tgt: break
-
-    def __decodeRecord(self, m, l1, l2, l3):
-        d = l1.split('>')[1].split('<')[0]
-        t = l2.split('>')[1].split('<')[0]
-        h = l3.split('>')[1].split('<')[0]
-
-        yy = self.year
-        dd = int(d)
-        hh = [ int(tt) for tt in t.split(':') ]
-        wl = float(h)
-        lcl_dt = datetime.datetime(yy, m, dd, hh[0], hh[1], tzinfo=self.tzinfo)
-        utc_dt = lcl_dt.astimezone(pytz.utc)
-        return TideRecord(utc_dt, wl)
-
-    def __readData(self, f):
-        records = []
-        m = 0
-        while True:
-            self.__skipToLine(f, '<table class="width-100">')
-
-            l = f.readline()
-            if not l: break
-            l = l.strip()
-            assert l[:9] == '<caption>'
-            m += 1
-            self.__skipToLine(f, '<tbody>')
-
-            self.__skipToLine(f, '<tr>')
-            eob = False
-            while not eob:
-                l1 = f.readline().strip()
-                l2 = f.readline().strip()
-                l3 = f.readline().strip()
-                r = self.__decodeRecord(m, l1, l2, l3)
-                records.append(r)
-
-                l = f.readline().strip()
-                assert l[:9] == '</tr>'
-                l = f.readline().strip()
-                if l == '</tbody>': eob = True
-
-        return records
-
-    def __open(self, url):
-        br = mechanicalsoup.StatefulBrowser()
-        #br.set_handle_refresh(False)
-        br.open(url)
-        return br
-
-    def read(self):
-        url = self.__buildURL()
-        try:
-            br = self.__open(url)
-        except:
-            print('Connection failure')
-            time.sleep(5) # (900)
-            br = self.__open(url)
-            #raise RuntimeError('')
-
-        p = br.response()
-        if (p.code != 200):
-            raise ValueError('Connection error')
-
-        return self.__readData(p)
 
 class TideRecord:
     """
@@ -139,6 +53,9 @@ class TideRecord:
         self.dt = dt
         self.wl = wl
 
+    def __hash__(self):
+        return hash((self.dt, self.wl))
+    
     def __lt__(self, other):
         return str(self.dt) < str(other.dt)
 
@@ -147,25 +64,6 @@ class TideRecord:
 
     def __ne__(self, other):
         return self.dt != other.dt or self.wl != other.wl
-
-    ## def __richcmp__(self, other, op):
-    ##     """
-    ##     cython code
-    ##     op: < 0; <= 1; == 2; != 3; > 4; >= 5
-    ##     """
-    ##     if op == 0:
-    ##         return str(self.dt) <  str(other.dt)
-    ##     if op == 1:
-    ##         return self.dt <= other.dt
-    ##     if op == 2:
-    ##         return self.dt == other.dt and self.wl == other.wl
-    ##     if op == 3:
-    ##         return self.dt != other.dt or self.wl != other.wl
-    ##     if op == 4:
-    ##         return self.dt >  other.dt
-    ##     if op == 5:
-    ##         return self.dt >= other.dt
-    ##     assert False
 
     def __str__(self):
         return '%s %f' % (self.dt.isoformat(), self.wl)
@@ -185,27 +83,30 @@ class TideTable:
 
     NPNTS_HW_LW = 31
     NPNTS_LW_HW = 19
-    DELTA_NRMTD = 900.0     # delta t for normalized tiide
+    DELTA_NRMTD = 900.0     # delta t for normalized tide
 
     def __init__(self):
         self.tbl = []
 
-    def dump(self, dataDir):
-        fname = os.path.join(dataDir, 'tide_3248.txt')
+    def dump(self, fname):
         f = codecs.open(fname, "w", encoding="utf-8")
         for r in self.tbl:
             f.write('%s\n' % r.dump())
 
     def load(self, dataDir):
-        fname = os.path.join(dataDir, 'tide_3248.txt')
-        f = codecs.open(fname, "r", encoding="utf-8")
-        for l in f.readlines():
-            l = l.strip()
-            if l[0] == '#': continue
-            r = TideRecord()
-            r.load(l)
-            self.tbl.append(r)
-        logger.debug('Tide table loaded, size = %i', len(self.tbl))
+        uniquer = set()
+        ptrn = os.path.join(dataDir, 'tide_3248*.txt')
+        for fname in glob.glob(ptrn):
+            LOGGER.debug('Read tide file %s', fname)
+            f = codecs.open(fname, "r", encoding="utf-8")
+            for l in f.readlines():
+                l = l.strip()
+                if l[0] == '#': continue
+                r = TideRecord()
+                r.load(l)
+                uniquer.add(r)
+        self.tbl.extend( sorted(uniquer) )
+        LOGGER.debug('Tide table loaded, size = %i', len(self.tbl))
 
     def append(self, r):
         self.tbl.append(r)
@@ -294,14 +195,14 @@ class TideTable:
         The normalized time is based on intervals of exactly 900s
         from the previous HW
         """
-        doDebug = (logger.getEffectiveLevel() == logging.DEBUG)
+        doDebug = (LOGGER.getEffectiveLevel() == logging.DEBUG)
         hw0 = self.getPreviousHW(dt)
         lw  = self.getNextLW(hw0.dt)
         hw1 = self.getNextHW(hw0.dt)
         if doDebug:
-            logger.debug('HW0: %s', str(hw0))
-            logger.debug('LW:  %s', str(lw))
-            logger.debug('HW1: %s', str(hw1))
+            LOGGER.debug('HW0: %s', str(hw0))
+            LOGGER.debug('LW:  %s', str(lw))
+            LOGGER.debug('HW1: %s', str(hw1))
         assert hw0.dt <= dt <= hw1.dt
         if dt <= lw.dt:
             dt2hw = (   dt - hw0.dt).total_seconds()    # delta from item to previous HW
@@ -310,12 +211,12 @@ class TideTable:
             nstp_dt2lw = nint(dt2hw/stp_hw2lw)
             inrm_tim = nstp_dt2lw
             if doDebug:
-                logger.debug('dt < lw.dt')
-                logger.debug('   Delta HW-T : %6.3fh %9.1fs', dt2hw/3600.0, dt2hw)
-                logger.debug('   Delta HW-LW: %6.3fh %9.1fs', lw2hw/3600.0, lw2hw)
-                logger.debug('   Step  HW-LW: %9.1fs', stp_hw2lw)
-                logger.debug('   nsteps: %i', nstp_dt2lw)
-                logger.debug('   normalized time: %f %f', inrm_tim*TideTable.DELTA_NRMTD, dt2hw)
+                LOGGER.debug('dt < lw.dt')
+                LOGGER.debug('   Delta HW-T : %6.3fh %9.1fs', dt2hw/3600.0, dt2hw)
+                LOGGER.debug('   Delta HW-LW: %6.3fh %9.1fs', lw2hw/3600.0, lw2hw)
+                LOGGER.debug('   Step  HW-LW: %9.1fs', stp_hw2lw)
+                LOGGER.debug('   nsteps: %i', nstp_dt2lw)
+                LOGGER.debug('   normalized time: %f %f', inrm_tim*TideTable.DELTA_NRMTD, dt2hw)
         else:
             dt2lw = (    dt -  lw.dt).total_seconds()    # delta from item to LW
             dt2hw = (    dt - hw0.dt).total_seconds()    # delta from item to previous HW
@@ -324,49 +225,32 @@ class TideTable:
             stp_lw2hw  = hw2lw / TideTable.NPNTS_LW_HW
             stp_hw2lw  = lw2hw / TideTable.NPNTS_HW_LW
             nstp_dt2lw = nint(dt2lw/stp_lw2hw)
-            nstp_hw2lw = nint(lw2hw/stp_lw2hw)
+            nstp_hw2lw = nint(lw2hw/stp_hw2lw)
             inrm_tim = (nstp_hw2lw + nstp_dt2lw)
+            assert nstp_hw2lw == TideTable.NPNTS_HW_LW
             if doDebug:
-                logger.debug('dt > lw.dt')
-                logger.debug('   Delta LW-T : %6.3fh %9.1fs', dt2lw/3600.0, dt2lw)
-                logger.debug('   Delta HW-T : %6.3fh %9.1fs', dt2hw/3600.0, dt2hw)
-                logger.debug('   Delta HW-LW: %6.3fh %9.1fs', lw2hw/3600.0, lw2hw)
-                logger.debug('   Delta LW-HW: %6.3fh %9.1fs', hw2lw/3600.0, hw2lw)
-                logger.debug('   step HW-LW: %9.1fs', stp_hw2lw)
-                logger.debug('   step LW-HW: %9.1fs', stp_lw2hw)
-                logger.debug('   nsteps HW-LW: %i', nstp_hw2lw)
-                logger.debug('   nsteps LW-T : %i', nstp_dt2lw)
-                logger.debug('   normalized time: %f %f', inrm_tim*TideTable.DELTA_NRMTD, dt2hw)
+                LOGGER.debug('dt > lw.dt')
+                LOGGER.debug('   Delta LW-T : %6.3fh %9.1fs', dt2lw/3600.0, dt2lw)
+                LOGGER.debug('   Delta HW-T : %6.3fh %9.1fs', dt2hw/3600.0, dt2hw)
+                LOGGER.debug('   Delta HW-LW: %6.3fh %9.1fs', lw2hw/3600.0, lw2hw)
+                LOGGER.debug('   Delta LW-HW: %6.3fh %9.1fs', hw2lw/3600.0, hw2lw)
+                LOGGER.debug('   step HW-LW: %9.1fs', stp_hw2lw)
+                LOGGER.debug('   step LW-HW: %9.1fs', stp_lw2hw)
+                LOGGER.debug('   nsteps HW-LW: %i', nstp_hw2lw)
+                LOGGER.debug('   nsteps LW-T : %i', nstp_dt2lw)
+                LOGGER.debug('   normalized time: %f %f', inrm_tim*TideTable.DELTA_NRMTD, dt2hw)
         return inrm_tim
 
 
 if __name__ == '__main__':
-    def downloadTables():
-        tide_tbl = TideTable()
-        # ---  Download from internet
-        for y in [2018]: # [2012, 2013, 2014, 2015, 2016, 2017, 2018]:
-            try:
-                print('Reading tide table for year %i' % y)
-                r = DataReaderMPO(3248, y)
-                tide_tbl.extend( r.read() )
-            except:
-                pass
-        # ---  Sort
-        tide_tbl.sort()
-        # ---  Check sorted
-        for r0, r1 in zip(tide_tbl.tbl, tide_tbl.tbl[1:]):
-            if not r0 < r1:
-                print('Table not sorted: r0=%s r1=%s' %(str(r0), str(r1)))
-        # ---  Dump
-        tide_tbl.dump('.')
-        return tide_tbl
-
     logHndlr = logging.StreamHandler()
-    FORMAT = "%(asctime)s %(levelname)s %(message)s"
+    FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    logger = logging.getLogger("INRS.ASModel.tide")
-    logger.addHandler(logHndlr)
-    logger.setLevel(logging.DEBUG)
+    #LOGGER = logging.getLogger("INRS.ASModel.tide")
+    LOGGER.addHandler(logHndlr)
+    LOGGER.setLevel(logging.DEBUG)
 
-    tbl1 = downloadTables()
+    dirname = r'E:\Projets_simulation\VilleDeQuebec\Beauport\Simulation\PIO\BBData_v1812\data.lim=1.0e-03'
+    tbl = TideTable()
+    tbl1 = tbl.load(dirname)
