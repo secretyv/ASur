@@ -35,6 +35,7 @@ ASModel_data = [
     
 python_hiddenimports = [
     'gdal',
+    # 'gdalarray',
     'pytimeparse',
     ]
 
