@@ -268,7 +268,7 @@ class ASur(wx.Frame):
         except FileNotFoundError:
             pass
         pPrm = self.__getPathParameters()
-        self.pnl_slin.setBackground(gPrm.fileBgnd, gPrm.fileShore)
+        self.pnl_slin.setBackground(gPrm.projBbox, gPrm.fileBgnd, gPrm.fileShore)
         self.pnl_slin.setParameters(pPrm)
 
     def __set_properties(self):
@@ -467,8 +467,14 @@ class ASur(wx.Frame):
         prm = ASGlobalParameters()
         for item in prm.iterOnAttributeNames():
             try:
-                value = self.prmsCfg.Read('/GlobalParameters/%s' % item)
-                setattr(prm, item, value)
+                tk = self.prmsCfg.Read('/GlobalParameters/%s' % item)
+                if tk:
+                    try:
+                        value = eval(tk, {}, {})
+                    except SyntaxError as e:
+                        print(str(e), tk)
+                        value = tk
+                    setattr(prm, item, value)
             except Exception as e:
                 self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
         return prm
@@ -969,7 +975,7 @@ class ASur(wx.Frame):
                 self.prmsCfg.Flush()
 
                 translator.loadFromFile(prm.fileTrnsl)
-                self.pnl_slin.setBackground(prm.fileBgnd, prm.fileShore)
+                self.pnl_slin.setBackground(prm.projBbox, prm.fileBgnd, prm.fileShore)
             dlg.Destroy()
         except Exception as e:
             errMsg = str(e)

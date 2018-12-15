@@ -25,6 +25,7 @@ class ASGlobalParameters:
         self.fileBgnd  = kwargs.pop('fileBgnd',  '')
         self.fileShore = kwargs.pop('fileShore', '')
         self.fileTrnsl = kwargs.pop('fileTrnsl', '')
+        self.projBbox  = kwargs.pop('projBbox',  (0.0, 0.0, 1.0, 1.0))
 
     def __iter__(self):
         for name in dir(self):

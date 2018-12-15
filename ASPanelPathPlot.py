@@ -101,8 +101,9 @@ class ASDataCursor(mpldatacursor.DataCursor):
 
 class ASPanelPathPlot(ASPanelWxMPL):
     DPI = 96
-    PRJ_BBLL = (636130, 5185695)    # Project BoundingBox Lower-Left
-    PRJ_BBUR = (646190, 5194425)    # Project BoundingBox Upper-Right
+    # PRJ_BBLL = (636130, 5185695)    # Project BoundingBox Lower-Left
+    # PRJ_BBUR = (646190, 5194425)    # Project BoundingBox Upper-Right
+    # BBOX PRJ_BBLL, PRJ_BBUR in WGS84: (-71.21568643482382, 46.81088948738244, -71.0811033476305, 46.88727566993671)
     PRJ_WKT  = """
     PROJCS[
         "EC-MTL-BSP (Modified UTM18)",
@@ -139,11 +140,13 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.CSS  = []
         self.cbar = None
 
-        self.window = None
-        self.screen = None
+        self.projBbox = None
+        self.window   = None
+        self.screen   = None
         self.srs_proj = None
         self.srs_wgs  = None
         self.proj2wgs = None
+        self.wgs2proj = None
         self.axes     = None
         self.bgMapFil = ''
         self.bgMapImg = None
@@ -162,10 +165,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
 
         self.Bind(wx.EVT_SIZE, self.onResize)
 
-        self.window = (ASPanelPathPlot.PRJ_BBLL[0],
-                       ASPanelPathPlot.PRJ_BBLL[1],
-                       ASPanelPathPlot.PRJ_BBUR[0],
-                       ASPanelPathPlot.PRJ_BBUR[1])
+        self.window = self.bbox
 
         self.__setAxes()
         self.__setSrsProj()
@@ -357,6 +357,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.srs_wgs = GDLBasemap.IPSpatialReference()
         self.srs_wgs.SetWellKnownGeogCS("WGS84")
         self.proj2wgs = GDLBasemap.IPCoordinateTransformation(self.srs_proj, self.srs_wgs)
+        self.wgs2proj = GDLBasemap.IPCoordinateTransformation(self.srs_wgs, self.srs_proj)
 
     def dataCursorPathFormatter(self, **kwargs):
         LOGGER.trace('dataCursorPathFormatter: %s', kwargs)
@@ -412,9 +413,16 @@ class ASPanelPathPlot(ASPanelWxMPL):
     def setParameters(self, prm):
         self.params = prm
 
-    def setBackground(self, fmap, fshr):
+    def setBackground(self, bbox, fmap, fshr):
+        llx, lly, llz = self.wgs2proj.TransformPoint(bbox[0], bbox[1])
+        hrx, hry, hrz = self.wgs2proj.TransformPoint(bbox[2], bbox[3])
+        self.projBbox = bbox
+        self.window   = (llx, lly, hrx, hry)
         self.bgMapFil = fmap
         self.bgShrFil = fshr
+        llx, lly, llz = self.proj2wgs.TransformPoint(ASPanelPathPlot.PRJ_BBLL[0], ASPanelPathPlot.PRJ_BBLL[1])
+        hrx, hry, hrz = self.proj2wgs.TransformPoint(ASPanelPathPlot.PRJ_BBUR[0], ASPanelPathPlot.PRJ_BBUR[1])
+        print((llx, lly, hrx, hry))
 
     def on_btn_pan(self, enable):
         fnc = ASDataCursor.enable if enable else ASDataCursor.disable
@@ -660,6 +668,9 @@ if __name__ == "__main__":
     LOGGER.addHandler(logHndlr)
     LOGGER.setLevel(logging.TRACE)
     
+    PRJ_BBLL = (636130, 5185695)    # Project BoundingBox Lower-Left
+    PRJ_BBUR = (646190, 5194425)    # Project BoundingBox Upper-Right
+
     app = wx.App()
     fr = wx.Frame(None, title='test')
     fr.SetSize((800, 600))
@@ -669,8 +680,8 @@ if __name__ == "__main__":
     
     tnow = datetime.datetime.now()
     T = np.linspace(0, 1, 50)
-    X = np.linspace(ASPanelPathPlot.PRJ_BBLL[0], ASPanelPathPlot.PRJ_BBUR[0], 50)
-    Y = np.linspace(ASPanelPathPlot.PRJ_BBLL[1], ASPanelPathPlot.PRJ_BBUR[1], 50)
+    X = np.linspace(PRJ_BBLL[0], PRJ_BBUR[0], 50)
+    Y = np.linspace(PRJ_BBLL[1], PRJ_BBUR[1], 50)
     TXY = np.stack((T, X, Y), axis=-1)
     plume = ASPlume(dilution=1.0e-03, name='tt', poly=None, tide=(), t0=tnow, tc=tnow, isDirect=False, plume=TXY)
 

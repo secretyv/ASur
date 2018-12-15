@@ -39,7 +39,7 @@ class ASDlgItemText(ASDlgItem):
     def __init__(self, *args, **kwds):
         title = kwds.pop('title', 'Title shall be provided')
         value = kwds.pop('value', '')
-        super(ASDlgItemFile, self).__init__(*args, **kwds)
+        super(ASDlgItemText, self).__init__(*args, **kwds)
 
         self.txtItem = wx.TextCtrl(self, wx.ID_ANY, "")
 
@@ -139,7 +139,7 @@ class ASDlgItemColor(ASDlgItem):
     def __init__(self, *args, **kwds):
         title = kwds.pop('title', 'Title shall be provided')
         value = kwds.pop('value', '')
-        super(ASDlgItemFile, self).__init__(*args, **kwds)
+        super(ASDlgItemColor, self).__init__(*args, **kwds)
 
         self.btnItem = wxcsel.ColourSelect(self, wx.ID_ANY, " "*15)
 
@@ -173,6 +173,7 @@ class ASDlgParamGlobal(wx.Dialog):
         wx.Dialog.__init__(self, *args, **kwds)
 
         self.items = []
+        self.items.append( ASDlgItemText(self, title="Zone d'étude (WGS84)",value='(0,0,1,1)') )
         self.items.append( ASDlgItemFile(self, title="Fond de carte",       value='Missing', pattern="GeoTIFF files(*.tif)|*.tif") )
         self.items.append( ASDlgItemFile(self, title="Ligne de berge",      value='Missing', pattern="Shape files (*.shp)|*.shp") )
         self.items.append( ASDlgItemFile(self, title="Idiome des stations", value='Missing', pattern="Asur Translation Files (*.atf)|*.atf") )
@@ -188,7 +189,7 @@ class ASDlgParamGlobal(wx.Dialog):
 
     def __set_properties(self):
         self.SetTitle("ASur - Paramètres globaux")
-        self.SetSize((500, 240))
+        self.SetSize((500, 290))
 
     def __do_layout(self):
         szrMain = wx.BoxSizer(wx.VERTICAL)
@@ -216,15 +217,17 @@ class ASDlgParamGlobal(wx.Dialog):
 
     def getParameters(self):
         prm = ASGlobalParameters()
-        prm.fileBgnd  = self.items[0].getValue()
-        prm.fileShore = self.items[1].getValue()
-        prm.fileTrnsl = self.items[2].getValue()
+        prm.projBbox  = eval(self.items[0].getValue())
+        prm.fileBgnd  = self.items[1].getValue()
+        prm.fileShore = self.items[2].getValue()
+        prm.fileTrnsl = self.items[3].getValue()
         return prm
 
     def setParameters(self, prm):
-        self.items[0].setValue(prm.fileBgnd)
-        self.items[1].setValue(prm.fileShore)
-        self.items[2].setValue(prm.fileTrnsl)
+        self.items[0].setValue(str(prm.projBbox))
+        self.items[1].setValue(prm.fileBgnd)
+        self.items[2].setValue(prm.fileShore)
+        self.items[3].setValue(prm.fileTrnsl)
 
 if __name__ == "__main__":
     class MyApp(wx.App):
