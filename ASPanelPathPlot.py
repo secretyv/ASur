@@ -420,9 +420,6 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.window   = (llx, lly, hrx, hry)
         self.bgMapFil = fmap
         self.bgShrFil = fshr
-        llx, lly, llz = self.proj2wgs.TransformPoint(ASPanelPathPlot.PRJ_BBLL[0], ASPanelPathPlot.PRJ_BBLL[1])
-        hrx, hry, hrz = self.proj2wgs.TransformPoint(ASPanelPathPlot.PRJ_BBUR[0], ASPanelPathPlot.PRJ_BBUR[1])
-        print((llx, lly, hrx, hry))
 
     def on_btn_pan(self, enable):
         fnc = ASDataCursor.enable if enable else ASDataCursor.disable
