@@ -1,9 +1,10 @@
 setlocal
 
-call setup_python27_32.bat
-call setup_vc_x86_for_python.bat
-
 :: ---  Pyinstaller 3.1 (3.2 est buggé)
-pyinstaller --version-file=ASur_version.txt ASur.spec
+pyinstaller --noconfirm --version-file=ASur_version.txt ASur.spec
+
+:: Fix osgeo
+cp dist/ASur/osgeo._gdal.pyd dist/ASur/_gdal.pyd
+cp dist/ASur/_gdal_array.pyd dist/ASur/osgeo._gdal_array.pyd
 
 :eoj
