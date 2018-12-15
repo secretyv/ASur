@@ -231,7 +231,7 @@ class ASPanelPlot(ASPanelWxMPL):
         dy = (ymax-ymin) / (len(data) + 1)
         for pt,dtaPt in data:                       # Pour chaque point de surverse
 
-            lbl  = translate[pt]
+            lbl  = translate[pt][0]
             gid  = pt
             iplt = iplt + 1
             for it,dtaTr in enumerate(dtaPt):       # Pour chaque transit
