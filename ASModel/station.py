@@ -409,7 +409,6 @@ class OverflowPoint:
         try:
             res.append( ASPlume(name=self.m_root.m_name, poly=self.m_root.m_poly) )
         except Exception as e:
-            print(str(e))
             pass
         for hit in hits[0]:
             if hit and hit.md5 not in md5s:
