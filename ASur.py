@@ -275,6 +275,7 @@ class ASur(wx.Frame):
         # ---  Main title
         self.SetTitle(appTitle)
         self.SetSize((800, 600))
+        self.nbk_dspl.SetSelection(0)
 
         # ---  Status bar
         self.statusbar.SetStatusWidths([-1,-1])
@@ -472,7 +473,6 @@ class ASur(wx.Frame):
                     try:
                         value = eval(tk, {}, {})
                     except SyntaxError as e:
-                        print(str(e), tk)
                         value = tk
                     setattr(prm, item, value)
             except Exception as e:
@@ -716,6 +716,7 @@ class ASur(wx.Frame):
         wx.BeginBusyCursor()
         try:
             dtaGlb= []
+            pthGlb= []
             dtini = DATE_MAX
             dtfin = DATE_MIN
             dtmax = dtfin
@@ -728,8 +729,6 @@ class ASur(wx.Frame):
                     dtini = min(dtini, ofl.tini)
                     dtfin = max(dtfin, ofl.tend)
                     dtmax = max(dtmax, dtmax_)
-                    #print(dtini, dtfin)
-                    #print(dtmax)
                 self.pnl_asur.plotAll  (self.bbModels[0], dtaGlb, dtini, dtfin, dtmax, title='Différentes vitesses en rivière')
                 self.pnl_slin.plotPaths(self.bbModels[0], pthGlb, dtini, dtfin, dtmax)
             # ---  With many models, merge transfer times and reorganize
@@ -738,16 +737,23 @@ class ASur(wx.Frame):
                     dtaPt = []
                     for bbModel in reversed(self.bbModels):
                         dta, (dtmin_, dtmax_) = self.__getPlotData(bbModel, [ofl], True)
-                        pth                   = self.__getPathData(bbModel, [ofl])
-                        self.__printPlotData(dta)
-                        #dtmax = max(dtmax, dtmax_)
+                        #self.__printPlotData(dta)
+                        dtini = min(dtini, ofl.tini)
+                        dtfin = max(dtfin, ofl.tend)
+                        dtmax = max(dtmax, dtmax_)
                         dtaMdl = dta[0][1]
                         if dtaMdl:
                             dtaPt.append( dtaMdl[0] )
                         else:
                             dtaPt.append( [] )
                     dtaGlb.append( (ofl.name, dtaPt) )
-                self.pnl_asur.plotAll(self.bbModels[0], dtaGlb, ofl.tini, ofl.tend, dtmax, title='Différentes dilutions')
+                self.pnl_asur.plotAll  (self.bbModels[0], dtaGlb, dtini, dtfin, dtmax, title='Différentes dilutions')
+
+                for bbModel in reversed(self.bbModels):
+                    for ofl in overflows:
+                        pth = self.__getPathData(bbModel, [ofl])
+                        pthGlb.extend( pth )
+                self.pnl_slin.plotPaths(self.bbModels[0], pthGlb, dtini, dtfin, dtmax)
 
             self.__set_state(GlbStates.data_loaded, BtnStates.on)
         except Exception as e:
@@ -1098,7 +1104,7 @@ if __name__ == "__main__":
         parser = optparse.OptionParser()
         #parser.add_option("-x", "--expert-mode", dest="xpr", default=False, action='store_true', help="start in expert mode")
         parser.add_option("-x", "--expert-mode", dest="xpr", default=False, action='store_true', help=optparse.SUPPRESS_HELP)
-        parser.add_option("-d", "--debug-mode",  dest="dbg", default=False, action='store_true', help=optparse.SUPPRESS_HELP)
+        parser.add_option("-d", "--debug-mode",  dest="dbg", default=False, action='store_true')
         parser.add_option("-l", "--locale",      dest="lcl", default=None, help="Fichier de traduction des noms de station")
 
         # --- Parse les arguments de la ligne de commande
@@ -1111,7 +1117,6 @@ if __name__ == "__main__":
         # --- Crée l'app
         appMode = GlbModes.debug  if options.dbg else GlbModes.standard
         appMode = GlbModes.expert if options.xpr else appMode
-        print(appMode)
         app, err = createASurApp(appMode=appMode)
 
         # --- Go
