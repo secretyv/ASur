@@ -434,7 +434,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         super(ASPanelPathPlot, self).on_btn_zoom_to_rectangle(enable)
 
     def onResizeThread(self):
-        LOGGER.info('ASPanelPathPlot.onResizeThread: begin %s locked: %s ', self.GetSize(), self.lock.locked())
+        LOGGER.trace('ASPanelPathPlot.onResizeThread: begin %s locked: %s ', self.GetSize(), self.lock.locked())
         doWork = self.GetSize()[0] > 30 and self.GetSize()[1] > 30
         self.lock.acquire(blocking=True)
         w = threading.current_thread()  # Worker
@@ -448,16 +448,16 @@ class ASPanelPathPlot(ASPanelWxMPL):
             LOGGER.debug('Exception: %s', str(e))
             LOGGER.debug('   %s', traceback.format_exc())
         LOGGER.debug('ASPanelPathPlot.onResizeThread: threads=%s', self.threads)
-        LOGGER.info('ASPanelPathPlot.onResizeThread: end')
+        LOGGER.trace('ASPanelPathPlot.onResizeThread: end')
         self.lock.release()
 
     def onResize(self, event):
         LOGGER.trace('ASPanelPathPlot.onResize: begin')
         for worker in self.threads:
-            LOGGER.info('Thread: %s stopping' % worker)
+            LOGGER.debug('Thread: %s stopping' % worker)
             self.threads[worker] = False
             # self.thread.join(5.0)
-            LOGGER.info('Thread: %s stopped' % worker)
+            LOGGER.debug('Thread: %s stopped' % worker)
 
         self.bgMapImg = None      # Force reload
         self.bgMapCS  = None      # Force reload
@@ -590,13 +590,10 @@ class ASPanelPathPlot(ASPanelWxMPL):
 
         hasColor = False
         polys = {}
-        ipl = 0
-        if plumes and plumes[0].stationName == 'Root':
-            plume = plumes[0]
+        for ip, plume in enumerate(plumes):
             polys[plume.stationName] = plume.stationPolygon
-            ipl = 1
-        for ip, plume in enumerate(plumes[ipl:]):
-            polys[plume.stationName] = plume.stationPolygon
+            if plume.stationName == 'Root':
+                continue
             txy = np.array(plume.plume)
             # ---  Indice du temps de contact
             # Les temps sont en epoch par rapport à une référence bâtarde

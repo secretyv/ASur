@@ -151,7 +151,7 @@ class ASPanelPathTree(wx.Panel):
         # ---  Set root
         root = self.tree.AddRoot('ASur')
         root.Set3State(True)
-        if plumesSorted[0].stationName == 'Root':
+        while plumesSorted[0].stationName == 'Root':
             root.SetData(plumesSorted[0])
             del plumesSorted[0]
 
