@@ -374,7 +374,7 @@ class OverflowPointOneTide(object):
                         if iy == oitem[0]:
                             LOGGER.error('   Bad dilution: (%d, %d): %.2e %.2e' % (ix, iy, a, oitem[1]))
                             missing = False
-                            exit
+                            break
                     if missing:
                         LOGGER.error('   Missing item: %d: %s' % (ix, oitem))
                     #raise ValueError('%d: %s' % (ix, oitem))
