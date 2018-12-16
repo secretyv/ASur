@@ -46,21 +46,23 @@ class Hit:
         self.tc = tc    # Contact time
         self.ix = ix    # Normalized tide injection index
         self.iy = iy    # Normalized tide contact index
-        self.a  = a     # Amplitude 
+        self.a  = a     # Amplitude
         self.md5= md5   # MD5 of plume
         self.dd = dd    # Direct or inverted plume
         self.pnt= pnt
         assert pnt is None or isinstance(pnt, OverflowPointOneTide)
 
     def __lt__(self, other):
-        if self.ix < other.ix: return True
-        if self.ix > other.ix: return False
-        if self.iy < other.iy: return True
-        if self.iy > other.iy: return False
+        """
+        Opérateur de comparaison basé sur l'amplitude uniquement
+        """
         return self.a < other.a
 
     def __eq__(self, other):
-        return self.ix == other.ix and self.iy == other.iy and self.a == other.a
+        """
+        Opérateur de comparaison basé sur l'amplitude uniquement
+        """
+        return self.a == other.a
 
 class OverflowPointOneTide(object):
     """
@@ -141,7 +143,7 @@ class OverflowPointOneTide(object):
                 sDta.sort(key=lambda x: x[0])
             except KeyError:
                 self.m_tideDta[ix] = other.m_tideDta[ix]
-        
+
     def mergePathData(self, other):
         """
         Merge tide data from other with self,
@@ -167,7 +169,7 @@ class OverflowPointOneTide(object):
                 sDta.sort(key=lambda x: x[0])
             except KeyError:
                 self.m_pathDta = other.m_pathDta
-        
+
     def __getRiverTransitTime(self):
         return self.m_river.getTransitTimes(self.m_dist2SL) if self.m_river else [0.0]
 
@@ -279,7 +281,7 @@ class OverflowPointOneTide(object):
             ]
         """
         LOGGER.trace('OverflowPointOneTide.getHitsForSpillWindow: from %s to %s', t_start, t_end)
-        
+
         # ---  Effective dt
         neff = nint( (t_end-t_start).total_seconds() / dt.total_seconds() )
         neff = max(neff, 1)
@@ -645,7 +647,7 @@ class OverflowPoint:
         LOGGER.info ('OverflowPoints.checkInclusion: %s', self.m_name)
         LOGGER.trace('OverflowPoints: %s vs %s', self, other)
         if self.m_name != other.m_name: raise ValueError('OverflowPoint: Incoherent name')
-        if ((self.m_river is not None or other.m_river is not None) and 
+        if ((self.m_river is not None or other.m_river is not None) and
             (self.m_river.name != other.m_river.name)): raise ValueError('OverflowPoint: Incoherent river')
         for oitem in other.m_tideRsp:
             i = self.m_tideRsp.index(oitem)
@@ -732,11 +734,11 @@ class OverflowPoints:
         for l in f.readlines():
             l = l.strip()
             if not l: continue
-            if l[0] == '#': 
-                if l.find('Dilution threshold is') > 0: 
+            if l[0] == '#':
+                if l.find('Dilution threshold is') > 0:
                     tk_dl = l[1:].split()[-1]
                     diltgt = float(tk_dl)
-            else:    
+            else:
                 try:
                     st = l.split(';')[0]
                     points[st][1].append(l)
@@ -754,8 +756,8 @@ class OverflowPoints:
         for l in f.readlines():
             l = l.strip()
             if not l: continue
-            if l[0] == '#': 
-                if l.find('Dilution threshold is') > 0: 
+            if l[0] == '#':
+                if l.find('Dilution threshold is') > 0:
                     tk_dl = l[1:].split()[-1]
                     diltgt = float(tk_dl)
             else:
@@ -799,7 +801,7 @@ class OverflowPoints:
         # ---  Create root point
         root = OverflowPoint()
         root.load(target, rivers, dataDir, diltgt)
-        
+
         # ---  Create points
         for k, v in points.items():
             #LOGGER.debug('OverflowPoints.load: create point %s (%s)' % (k, len(v)))
@@ -832,7 +834,7 @@ class OverflowPoints:
         for sta, oitem in other.m_pnts.items():
             sitem = self.m_pnts[sta]
             sitem.checkInclusion(oitem)
-        
+
     def checkPathFiles(self):
         """
         Debug Code
@@ -914,7 +916,7 @@ if __name__ == '__main__':
         ##rivers2 = loadRivers(fpath)
         ##points2 = loadPoints(fpath, rivers2)
         ##points.checkInclusion(points2)
-        
+
         t0 = datetime.datetime.now(tz=pytz.utc).replace(day=12,hour=20,minute=00,second=0,microsecond=0)
         t0 = t0 + datetime.timedelta(hours=0, minutes= 0)
         t1 = t0 + datetime.timedelta(hours=2, minutes= 0)
