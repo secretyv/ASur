@@ -605,7 +605,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
             dt = (plume.contactTime - plume.injectionTime).total_seconds()
             imax = DT.shape[0] - 1
             try:
-                itx = np.searchsorted(DT, dt, side='right') if self.params.doClipPath else imax
+                itx = np.searchsorted(DT, dt, side='left') if self.params.doClipPath else imax
                 itx = min(itx+2, imax)  # Pour s'assurer de pogner
             except:
                 itx = imax
