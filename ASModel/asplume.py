@@ -59,5 +59,5 @@ class ASPlume:
         s.append('t_inj=%s' % self.injectionTime)
         s.append('t_hit=%s' % self.contactTime)
         s.append('direct=%s' % self.isPlumeDirect)
-        s.append('plume=%d' % len(self.plume))
+        s.append('plume=%d' % (len(self.plume) if self.plume else 0))
         return ' '.join(s)
