@@ -114,6 +114,60 @@ class OverflowPointOneTide(object):
     def getId(self):
         return 'dh=%.2f, dt=%.2f' % (self.m_dh, self.m_dt/3600)
 
+    def mergeTideData(self, other):
+        """
+        Merge tide data from other with self,
+        if data doesnot exist in self
+        or if amplitude of other is bigger
+        """
+        # ---  Loop on other ix's
+        for ix in other.m_tideDta:
+            try:
+                oDta = other.m_tideDta[ix]
+                sDta = self.m_tideDta[ix]   # Will raise if absent
+                # ---  Loop on other iy's
+                for iy, a in oDta:
+                    # --- Get all indexes of iy in self data - should be at most 1
+                    idxs = [i for i, (jy, a) in enumerate(sDta) if jy==iy]
+                    if idxs:
+                        assert len(idxs) == 1
+                        idx = idxs[0]
+                        # ---  Keep other value if >
+                        if a > sDta[idx][1]:
+                            sDta[idx] = (iy, a)
+                    else:
+                        sDta.append( (iy, a) )
+                # ---  Keep things sorted on iy
+                sDta.sort(key=lambda x: x[0])
+            except KeyError:
+                self.m_tideDta[ix] = other.m_tideDta[ix]
+        
+    def mergePathData(self, other):
+        """
+        Merge tide data from other with self,
+        if data doesnot exist in self
+        or if amplitude of other in bigger
+        """
+        # ---  Loop on other ix's
+        for ix in other.m_pathDta:
+            try:
+                oDta = other.m_pathDta[ix]
+                sDta = self.m_pathDta[ix]   # Will raise if absent
+                # ---  Loop on other iy's
+                for iy, md5, dd in oDta:
+                    # --- Get all indexes of iy in self data - should be at most 1
+                    idxs = [i for i, (jy, _1, _2) in enumerate(sDta) if jy==iy]
+                    if idxs:
+                        assert len(idxs) == 1
+                        idx = idxs[0]
+                        assert md5 == sDta[idx][1]
+                    else:
+                        sDta.append( (iy, md5, dd) )
+                # ---  Keep things sorted on iy
+                sDta.sort(key=lambda x: x[0])
+            except KeyError:
+                self.m_pathDta = other.m_pathDta
+        
     def __getRiverTransitTime(self):
         return self.m_river.getTransitTimes(self.m_dist2SL) if self.m_river else [0.0]
 
@@ -288,12 +342,42 @@ class OverflowPointOneTide(object):
         LOGGER.trace('OverflowPointOneTide.loadPath: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))
 
     def checkPathFiles(self):
+        """
+        Debug code:
+        Check that all the path files exist
+        """
         for ix,dta in self.m_pathDta.items():
             for iy,md5,dd in dta:
                 fname = 'path-%s.pkl' % (md5)
                 fname = os.path.join(self.m_pathDir, fname)
                 if not os.path.isfile(fname):
                     LOGGER.warning('Path file not found: %s', fname)
+
+    def checkInclusion(self, other):
+        """
+        Debug code:
+        Check that other is included in self.
+        """
+        LOGGER.info('OverflowPointOneTide.checkInclusion: %s', (self.m_dt, self.m_dh))
+        LOGGER.trace('OverflowPointOneTide.checkInclusion: %s vs %s', self, other)
+        if self.m_dt != other.m_dt: raise ValueError('OverflowPointOneTide: Incoherent tide: %s vs %s' % (self.m_dh, other.m_dh))
+        if self.m_dh != other.m_dh: raise ValueError('OverflowPointOneTide: Incoherent tide: %s vs %s' % (self.m_dh, other.m_dh))
+        for ix, ovals in other.m_tideDta.items():
+            try:
+                svals = self.m_tideDta[ix]
+            except KeyError:
+                raise
+            for oitem in ovals:
+                if oitem not in svals:
+                    missing = True
+                    for iy, a in svals:
+                        if iy == oitem[0]:
+                            LOGGER.error('   Bad dilution: (%d, %d): %.2e %.2e' % (ix, iy, a, oitem[1]))
+                            missing = False
+                            exit
+                    if missing:
+                        LOGGER.error('   Missing item: %d: %s' % (ix, oitem))
+                    #raise ValueError('%d: %s' % (ix, oitem))
 
 class OverflowPoint:
     """
@@ -546,10 +630,31 @@ class OverflowPoint:
             for m in self.m_parent.m_tideRsp:
                 o = OverflowPointOneTide(self.m_river, self.m_dist2SL)
                 o.setTideData( *m.getTideData() )
-                self.m_tideRsp.append(o)
+                if o in self.m_tideRsp:
+                    i = self.m_tideRsp.index(o)
+                    self.m_tideRsp[i].mergeTideData(o)
+                    self.m_tideRsp[i].mergePathData(o)
+                else:
+                    self.m_tideRsp.append(o)
+
+    def checkInclusion(self, other):
+        """
+        Debug Code
+        Check that other is included in self.
+        """
+        LOGGER.info ('OverflowPoints.checkInclusion: %s', self.m_name)
+        LOGGER.trace('OverflowPoints: %s vs %s', self, other)
+        if self.m_name != other.m_name: raise ValueError('OverflowPoint: Incoherent name')
+        if ((self.m_river is not None or other.m_river is not None) and 
+            (self.m_river.name != other.m_river.name)): raise ValueError('OverflowPoint: Incoherent river')
+        for oitem in other.m_tideRsp:
+            i = self.m_tideRsp.index(oitem)
+            sitem = self.m_tideRsp[i]
+            sitem.checkInclusion(oitem)
 
     def checkPathFiles(self):
         """
+        Debug Code
         Check the presence of the path files
         """
         try:
@@ -717,7 +822,22 @@ class OverflowPoints:
         self.m_dilution = diltgt
         self.m_root     = root
 
+    def checkInclusion(self, other):
+        """
+        Debug Code
+        Check that other is included in self.
+        """
+        LOGGER.info('OverflowPoints.checkInclusion: Dilution %.2e', self.m_dilution)
+        if self.m_dilution >=  other.m_dilution: raise ValueError('OverflowPoints: Incoherent dilution')
+        for sta, oitem in other.m_pnts.items():
+            sitem = self.m_pnts[sta]
+            sitem.checkInclusion(oitem)
+        
     def checkPathFiles(self):
+        """
+        Debug Code
+        Check the presence of the path files
+        """
         for p in self.m_pnts.values():
             p.checkPathFiles()
 
@@ -781,23 +901,20 @@ if __name__ == '__main__':
 
         LOGGER = logging.getLogger("INRS.ASModel.station")
         LOGGER.addHandler(logHndlr)
-        LOGGER.setLevel(logging.DEBUG)
+        LOGGER.setLevel(logging.TRACE)
 
-        #fpath = '../BBData_v3.2/data.lim=1e-4'
-        fpath = r'E:\Projets_simulation\VilleDeQuebec\Beauport\Simulation\PIO\BBData_v1812\data.lim=1.0e-03'
+        fpath  = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v1812rc1\data.lim=1.0e-06'
         tides  = loadTides (fpath)
         rivers = loadRivers(fpath)
         points = loadPoints(fpath, rivers)
         #points.checkPathFiles()
 
-        #for p in points.getNames():
-        #    pp = points[p]
-        #    print pp.name
-        #    print '   ', pp.river
-        #    print '   ', pp.dist2SL
-        #    print '   ', pp.parent.name if pp.parent else pp.parent
-        #    print '   ', pp.tideDta
-
+        ##fpath   = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v1812rc1\data.lim=1.0e-03'
+        ##tides2  = loadTides (fpath)
+        ##rivers2 = loadRivers(fpath)
+        ##points2 = loadPoints(fpath, rivers2)
+        ##points.checkInclusion(points2)
+        
         t0 = datetime.datetime.now(tz=pytz.utc).replace(day=12,hour=20,minute=00,second=0,microsecond=0)
         t0 = t0 + datetime.timedelta(hours=0, minutes= 0)
         t1 = t0 + datetime.timedelta(hours=2, minutes= 0)
