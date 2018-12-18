@@ -1,4 +1,4 @@
-﻿:: ---  Clean
+:: ---  Clean
 call clean.bat
 
 :: ---  Génère help
