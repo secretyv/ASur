@@ -10,7 +10,7 @@ def findFileInPath(f):
         fp = os.path.join(p, f)
         if os.path.isfile(fp):
             return p
-    return '' 
+    return ''
 
 block_cipher = None
 
@@ -18,21 +18,23 @@ ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\ASur'
 
 ASCmp = ['tide', 'river', 'station', 'overflow', 'asplume', 'asclass', 'asapi', '__init__']
 ASModel_hiddenimports = [
-    'ASModel.'+c for c in ASCmp[:-1] 
+    'ASModel.'+c for c in ASCmp[:-1]
     ]
-ASModel_binaries = [ 
+ASModel_binaries = [
     ]
-ASModel_data = [ 
+ASModel_data = [
     ('LICENSE',             '.'),
+    ('background',          'background'),
     ('bitmaps/*.png',       'bitmaps'),
     ('bitmaps/LICENSE.TXT', 'bitmaps'),
-    ('background',          'background'),
+    ('help/Asur.*',         'help'),
+    ('help/images',         'help/images'),
     ('traduction',          'traduction'),
     (findFileInPath('gdalsrsinfo.exe'), '.'),
     (findFileInPath('gdalwarp.exe'),    '.'),
     ]
 
-    
+
 python_hiddenimports = [
     'gdal',
     # 'gdalarray',

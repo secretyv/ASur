@@ -42,7 +42,7 @@ class ASDlgParamPath(wx.Dialog):
 
         self.chkDoDrawPath      = wx.CheckBox   (self, wx.ID_ANY, "Affiche les tracés")
         self.chkDoClipPath      = wx.CheckBox   (self, wx.ID_ANY, "Limite le tracé")
-        self.chkDoPathCursor    = wx.CheckBox   (self, wx.ID_ANY, "Curseur de données")
+        self.chkDoPathCursor    = wx.CheckBox   (self, wx.ID_ANY, "Curseur des tracés")
         self.chkDoDrawColorbar  = wx.CheckBox   (self, wx.ID_ANY, "Affiche la légende de couleur")
         self.stxPathColorSource = wx.StaticText (self, wx.ID_ANY, "Source pour la couleur", style=wx.ALIGN_LEFT)
         self.cbxPathColorSource = wx.ComboBox   (self, wx.ID_ANY, choices=clrSrc, value=clrSrc[0], style=wx.CB_DROPDOWN | wx.CB_READONLY)

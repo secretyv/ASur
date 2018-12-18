@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+   <head>
+     <meta charset="UTF-8">
+     <title>ASur-2</title>
+   </head>
+  <body>
+    <h2>Le menu <em>Paramètres</em></h2>
+    <p><img src="images/menuParametres.PNG" alt="menuParamètres"></p>
+
+    <h4>Marées</h4>
+    <p>Le menu &lt;Paramètres/Marées&gt; permet <a href="#GestionDesMarées">la gestion des marées</a> qui sont
+    utilisées dans le calcul et l’affichage</p>
+
+    <h4>Panaches</h4>
+    <p>Le menu &lt;Paramètres/Panaches&gt; permet <a href="#GestionDeTracé">la gestion de tracé des panaches</a>,
+    de tous les paramètres influençant l’affichage des panaches.</p>
+    
+    <h4>Globaux</h4>
+    <p>Le menu &lt;Paramètres/Globaux&gt; permet <a href="#GestionDesParamètresGlobaux">la gestion des paramètres
+    globaux</a></p>
+
+    <h3><a id="GestionDesMarées">La gestion des marées</a></h3>
+    <p><img src="images/ParamMarees.PNG" alt="ParamMarées"></p>
+    <p>La boite de dialogue permet de choisir les marées qui seront utilisées pour le calcul. Les marées sont
+    triées par <em>dh</em> le marnage (différence de niveau entre la marée haute et la marée basse suivante) et
+    <em>dt</em> la durée, donnée ici en heures décimales.</p>
+    <p>Le choix est global dans le sens qu’il va toucher tous les points d’injections. Les paramètres sont
+    sauvegardés d’une session de travail à l’autre.</p>
+    
+    <h3><a id="GestionDeTracé">La gestion de tracé des panaches</a></h3>
+    <p><img src="images/ParamTrace.PNG" alt="ParamTracé"></p>
+    <p>La boite de dialogue permet de gérer l’affichage des tracés des panaches. Les paramètres sont
+    sauvegardés d’une session de travail à l’autre.</p>
+
+    <h4>Section « Fond de carte »</h4>
+    <ul>
+    <li>Affiche le fond de carte</li>
+    <li>Affiche la ligne de berge: la ligne de berge est la limite de calcul de la simulation hydrodynamique qui peut parfois s'étendre à l'intérieur des terres.</li>
+    <li>Affiche les polygones: les polygones délimitent les "cibles" utilisées pour déterminer le contact. Il y a contact si l'ellipse de dilution intersecte le polygone. Ces polygones permettent de prendre en compte les variabilités qui ne sont pas incluses dans le modèle (vent, débit du Fleuve et des tributaires...)</li>
+    <li>Couleur de la ligne de berge</li>
+    <li>Couleur des polygones</li>
+    </ul>
+    
+    <h4>Section « Tracé des particules »</h4>
+    <ul>
+    <li>Affiche les tracés</li>
+    <li>Limite le tracé: Limite le tracé à la partie jusqu'au contact avec le site.</li>
+    <li>Curseur des tracés: Active/désactive le curseur des tracés. Ce curseur permet d'obtenir
+    de l'information sur les tracés à l'endroit du curseur. 
+    Il est activé par un clic-gauche de la souris et affiche les informations dans une bulle. Cette bulle est
+    effacée un clic-droit de la souris. Attention: une bulle est crée pour <b>chacun</b> des tracés sous la
+    souris.</li>
+    <li>Affiche la légende de couleur: Active/désactive l'affichage de la légende de couleur du tracé.</li>
+    <li>Source pour la couleur: La couleur peut être soit basée sur le temps de parcoures (TIME) soit sur le
+    taux de dilution (DILUTION)</li>
+    </ul>
+    
+    <h4>Section « Tracé des ellipses »</h4>
+    <ul>
+    <li>Affiche les ellipses</li>
+    <li>Curseur des ellipses: Active/désactive le curseur des ellipse. Ce curseur permet d'obtenir
+    de l'information sur les ellipses de diffusion à l'endroit du curseur. 
+    Il est activé par un clic-gauche de la souris et affiche les informations dans une bulle. Cette bulle est
+    effacée un clic-droit de la souris. Attention: une bulle est crée pour <b>chacune</b> des ellipses sous la
+    souris.
+    </li>
+    <li>Fréquence du tracé: Afin d'alléger l'affichage, il est possible de ne pas tracer toutes les ellipses, mais seulement 1/2, 1/3,... La valeur -1 n'affichera que le dernière ellipse.</li>
+    <li>Couleur des ellipses</li>
+    <li>Transparence (alpha): transparence des ellipse, valeur entre 1 (complètement opaque) 
+    et 0 (complètement transparent).</li>
+    </ul>
+     
+    <h3><a id="GestionDesParamètresGlobaux">La gestion des paramètres globaux</a></h3>
+    <p><img src="images/ParamGlobaux.PNG" alt="ParamGlobaux"></p>
+    <p>La boite de dialogue permet de gérer les paramètres globaux. Les paramètres sont
+    sauvegardés d'une session de travail à l’autre.</p>
+    <h4>La zone d’étude</h4>
+    La zone d'étude est spécifiée par les coordonnées WGS84 de ses coins inférieur-gauche et supérieur-droit. Les coordonnées sont en degrés décimaux, et la syntaxe doit correspondre à un tuple de Python, par exemple: 
+    <code>(-71.21568643482382, 46.81088948738244, -71.0811033476305, 46.88727566993671)</code>.
+    <h4>Le fond de carte</h4>
+    Chemin d'accès du fichier en format GeoTIFF qui sert de fond de carte.
+    <h4>La ligne de berge</h4>
+    Chemin d'accès du fichier de ligne de berge au format Shapefile.
+    <h4>L’Idiome des stations</h4>
+    Chemin d'accès du fichier de traduction des noms des stations. Le fichier sert à la traduction
+    pour l'affichage des noms des stations.
+  </body>
+</html>

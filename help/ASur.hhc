@@ -1,0 +1,61 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+<HEAD>
+<meta name="GENERATOR" content="Microsoft&reg; HTML Help Workshop 4.1">
+<!-- Sitemap 1.0 -->
+</HEAD><BODY>
+<OBJECT type="text/site properties">
+	<param name="Window Styles" value="0x800025">
+	<param name="ImageType" value="Folder">
+</OBJECT>
+<UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Introduction">
+		<param name="Local" value="00-00-Introduction.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Pr&eacute;sentation g&eacute;n&eacute;rale">
+		<param name="Local" value="00-01-Présentation générale.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Menus">
+		<param name="Local" value="01-01-Menu Fichiers.htm">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Aide">
+			<param name="Local" value="01-03-Menu Aide.htm">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Fichiers">
+			<param name="Local" value="01-01-Menu Fichiers.htm">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Param&egrave;tres">
+			<param name="Local" value="01-02-Menu Paramètres.htm">
+			</OBJECT>
+	</UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Boutons">
+		<param name="Local" value="02-01-Boutons fonction.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Onglets">
+		<param name="Local" value="03-00-Onglets.htm">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Surverses">
+			<param name="Local" value="03-01-Onglet Surverses.htm">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Graphes">
+			<param name="Local" value="03-02-Onglet Graphe.htm">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Trajectoires">
+			<param name="Local" value="03-03-Onglet Trajectoires.htm">
+			</OBJECT>
+	</UL>
+</UL>
+</BODY></HTML>

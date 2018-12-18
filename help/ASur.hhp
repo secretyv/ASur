@@ -1,0 +1,25 @@
+[OPTIONS]
+Compatibility=1.1 or later
+Compiled file=ASur.chm
+Contents file=ASur.hhc
+Default topic=00-00-Introduction.htm
+Display compile progress=No
+Index file=ASur.hhk
+Language=0xc0c Français (Canada)
+Title=ASur-2
+
+
+[FILES]
+00-00-Introduction.htm
+00-01-Présentation générale.htm
+01-01-Menu Fichiers.htm
+02-01-Boutons fonction.htm
+03-00-Onglets.htm
+03-01-Onglet Surverses.htm
+03-02-Onglet Graphe.htm
+03-03-Onglet Trajectoires.htm
+01-03-Menu Aide.htm
+01-02-Menu Paramètres.htm
+
+[INFOTYPES]
+

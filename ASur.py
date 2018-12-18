@@ -41,6 +41,7 @@ import wx
 import wx.adv          as wx_adv
 import wx.lib.wordwrap as wx_ww
 import wx.aui          as wx_AUI
+import wx.html         as wx_html
 
 try:
     supPath = os.path.join( os.environ['INRS_DEV'], 'H2D2-tools', 'script'  )
@@ -67,9 +68,9 @@ import ASDlgParamPath
 import ASDlgTides
 import ASModel
 
-#--- Help provider
-provider = wx.SimpleHelpProvider()
-wx.HelpProvider.Set(provider)
+#--- Help provider for contexutal help (broken!!)
+# provider = wx.SimpleHelpProvider()
+# wx.HelpProvider.Set(provider)
 
 #--- States
 GlbStates = enum.Enum('GlbStates', ('started', 'data_loaded'))
@@ -80,51 +81,6 @@ if getattr(sys, 'frozen', False):
     ICON_ROOT = os.path.join(sys._MEIPASS, 'bitmaps')
 else:
     ICON_ROOT = os.path.join(os.path.dirname(__file__), 'bitmaps')
-
-hlpTxt = """
-Détermination de la fenêtre des temps d'arrivée d'une surverse
-
-Principe
-======
-L'application permet de charger un ou plusieurs jeux de données qui décrivent la dynamique \
-des temps d'arrivée des surverses pour un site.
-
-L'application permet de spécifier un scénario de surverse:
-    - en sélectionnant un ou des points de surverse;
-    - en spécifiant la plage horaire de la surverse.
-La même plage horaire est appliquée à tous les points de surverse sélectionnés. \
-Les temps sont spécifiés en heure locale.
-
-Pour chaque point de surverse le graphique montre une ou plusieurs \
-fenêtre de temps d'arrivée au site choisi. Pour la période, il montre également une esquisse \
-du signal de marée qui est extrait des tables de marées du Pêches et Océan Canada.
-
-Pour chaque scénario de surverse, l'application va déterminer à partir de quand \
-le site choisi sera touchée. Elle donne donc les temps d'arrivée. \
-Elle ne détermine pas pendant combien de temps le site sera affectée par la surverse.
-
-La qualité de l’eau au site peut continuer d’être d’affectée pendant une certaine période \
-de temps après l'arrivée des surverses avant de retrouver une meilleur qualité par les effets combinés \
-de la dilution, du transport et de la dégradation des contaminants. On peut toutefois estimer \
-que la prochaine marée haute aura nettoyé le site.
-
-L'application permet de charger plusieurs jeux de données et de les comparer.
-
-Interactions
-========
-Le menu <Fichier/Ouvrir> permet de choisir le répertoire qui contient le(s) jeux de données \
-avec lequel travailler. S'il s'agit d'un répertoire qui contient des sous-répertoires de données, alors \
-tous les sous-répertoires seront chargés. Sinon, seul le répertoire sélectionné sera chargé.
-le menu <Fichier/Ajouter> et <Fichier/Ajouter un répertoire récent> permettent d'ajouter un jeux de données.
-
-Le menue <Paramètres/Marées> permet de choisir quelles marées vont être considérées dans le calcul. \
-Celles-ci sont identifiées par le marnage et la durée du cycle et sont triées par marnage. Les marées actives \
-sont sauvegardées et relues lorsque le logiciel est relancé.
-
-Il est possible d’agrandir une portion du graphique (zoom) en sélectionnant un rectangle \
-avec la souris (click & drag). Le retour en arrière se fait en utilisant la barre d'espacement.
-
-"""
 
 licTxt = """
 ASur  Version %s
@@ -147,7 +103,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 See the License for the specific language governing permissions and limitations under the License.
 """ % (__version__, __copyright__)
 
-appName  = "ASur"
+appName  = "ASur-2"
 appTitle = "Arrivée d'une SURverse"
 
 class ASur(wx.Frame):
@@ -174,6 +130,7 @@ class ASur(wx.Frame):
         self.pnl_pnts  = ASPanelScenario    (self.nbk_dspl, wx.ID_ANY)
         self.pnl_asur  = ASPanelPlot        (self.nbk_dspl, wx.ID_ANY)
         self.pnl_slin  = ASPanelPath        (self.nbk_dspl, wx.ID_ANY)
+        self.dlgHelp   = None
         self.dlgParamPath = None # ASDlgParamPath.ASDlgParamPath(None)
         self.statusbar = self.CreateStatusBar(2)
 
@@ -315,7 +272,7 @@ class ASur(wx.Frame):
         self.mnu_file.Append(self.mnu_file_add)
         self.mnu_file.Append(wx.ID_ANY, 'Ajouter un répertoire récent\tCtrl+R', self.hist_mnu)
         self.mnu_file.AppendSeparator()
-        self.mnu_file.Append(wx.ID_ANY, 'Fermer un jeux de données\tCtrl+W', self.bbmdl_mnu)
+        self.mnu_file.Append(wx.ID_ANY, 'Fermer un jeu de données\tCtrl+W', self.bbmdl_mnu)
         self.mnu_file_close = wx.MenuItem(self.mnu_file, wx.ID_ANY, 'Fermer tout',  'Fermer tous les jeux de données', wx.ITEM_NORMAL)
         self.mnu_file.Append(self.mnu_file_close)
         self.mnu_file.AppendSeparator()
@@ -991,12 +948,10 @@ class ASur(wx.Frame):
             dlg.Destroy()
 
     def on_mnu_help_help(self, event):
-        infoDlg = wx_adv.AboutDialogInfo()
-        #infoDlg.Name = appTitle
-        infoDlg.Name = '\n'.join(['%s %s' % (appName, __version__), appTitle])
-        infoDlg.Copyright = __copyright__
-        infoDlg.Description = wx_ww.wordwrap(hlpTxt, 450, wx.ClientDC(self))
-        wx_adv.AboutBox(infoDlg)
+        if not self.dlgHelp:
+            self.dlgHelp = wx_html.HtmlHelpController(style=wx_html.HF_DEFAULT_STYLE, parentWindow=None)
+            self.dlgHelp.AddBook('help/ASur.hhp')
+        self.dlgHelp.DisplayContents()
 
     def on_mnu_help_reload(self, event):
         import imp

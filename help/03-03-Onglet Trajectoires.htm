@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+   <head>
+     <meta charset="UTF-8">
+     <title>ASur-2</title>
+   </head>
+  <body>
+      <h2>Onglet <em>Trajectoires</em></h2>
+      <p><img src="images/OngletTrajectoires.png" alt="OngletTrajectoires" /></p>
+
+      <p>L'onglet présente 2 sections :</p>
+      <p>L'onglet Trajectoire présente deux volets&nbsp;:</p>
+      <ul>
+      <li>à gauche, l'arborescence des panaches</li>
+      <li>à droite, l'affichage</li>
+      </ul>
+      <p>Ce qui est tracé est contrôlé par l'arborescence, comment c'est tracé est contrôlé par les
+      <a href="01-02-Menu Paramètres.htm#GestionDeTracé">paramètres de tracé</a></p>
+
+   <h3>L'arborescence</h3>
+   <p>La hiérarchie de l'arbre est la suivante&nbsp;:</p>
+   <ol>
+   <li>Les dilutions qui correspondent à un jeu de donnée</li>
+   <li>Les stations qui surversent</li>
+   <li>Les marées</li>
+   <li><a href="#Panaches directs et inversés">Les panaches directs et inversés</a></li>
+   <li>Les panaches</li>
+   </ol>
+   <p>Activer/désactiver un niveau va activer/désactiver tous les niveaux inférieurs.</p>
+
+   <h3>Le tracé</h3>
+   <p>Sont représentés, si activés, le fond de carte, la ligne de berge, les tracés et les ellipses. 
+   Cela fait possiblement énormément d'information qu'il convient de bien gérer.
+   Une stratégie peut être, dans un premier temps, de désactiver tous les panaches sauf un ou deux.
+   Ensuite de jouer avec les <a href="01-02-Menu Paramètres.htm#GestionDeTracé">paramètres de tracé</a>
+   comme l'affichage des ellipses, la fréquence d'affichage etc.. Puis d'ajouter
+   </p>
+
+   <h3><a id="Panaches directs et inversés">La notion de panaches directs et inversés<a></h3>
+   <h4>Les panaches directs</h4>
+   <p>Les panaches directs sont obtenus par calcul d'une injection à partir du point de surverse. Lorsque l'ellipse qui modélise la dilution touche la cible du site d'étude, i.e le polygone qui représente le site, il y a contact. C'est ce contact qui est utilisé dans <a href="03-02-Onglet Graphe.htm">l'onglet Graphes</a>.</p>
+   
+   <h4>Les panaches inversés</h4>
+   <p>Les panaches inversés sont obtenus en inversant la solution hydrodynamique, donc en remontant le temps
+   et le courant. Le site d'étude est alors pris comme point d'injection et l'ellipse de diffusion représente
+   la zone qui va influencer le point d'injection. C'est le contact avec l'un des polygones des points de
+   surverse qui est utilisé dans dans <a href="03-02-Onglet Graphe.htm">l'onglet Graphes</a>.
+   En fait, vu la largeur du site d'étude, ce sont 5 points d'injection qui ont été considérés.</p>
+
+  </body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+   <head>
+     <meta charset="UTF-8">
+     <title>ASur-2</title>
+   </head>
+  <body>
+      <h2>Détermination de la fenêtre des temps d'arrivée d'une surverse</h2>
+
+      <p>L'application permet de charger un ou plusieurs jeux de données qui décrivent la dynamique
+      des temps d'arrivée des surverses pour un site.</p>
+      
+      <p>L'application permet de spécifier un scénario de surverse&nbsp;:</p>
+      <ul>
+        <li>en sélectionnant un ou des points de surverse;</li>
+        <li>en spécifiant pour chacun de ces points la plage horaire de la surverse.</li>
+      </ul>
+      <p>Les temps sont spécifiés en heure locale.</p>
+      
+      <p>ASur détermine si les surverses vont toucher le site en découpant la fenêtre de surverses
+      en intervalles de 15 minutes et pour chaque intervalle de temps&nbsp;:
+      <ul>
+         <li>le positionne dans la marée</li>
+         <li>lis de la base de données les résultats pour ce moment de la marées</li>
+      </ul>
+      Ce calcul est fait pour chaque jeu de donnée et pour chaque point de surverse.
+      </p>
+      
+      <p>Pour chaque point de surverse le graphique montre une ou plusieurs fenêtres de temps d'arrivée
+      au site choisi. Pour la période, il montre également une esquisse du signal de marée qui est extrait
+      des tables de marées du Pêches et Océan Canada.</p>
+      
+      <p>Le tracé des particules affiches sur fond de carte les trajectoires des surverses. De nombreux
+      paramètres permettent de gérer l'affichage.</p>
+      
+      <p>Pour chaque scénario de surverse, l'application va déterminer à partir de quand le site choisi
+      sera touché. Elle donne donc les temps d'arrivée. Elle ne détermine pas pendant combien de temps
+      le site sera affectée par la surverse.</p>
+      
+      <p>La qualité de l'eau au site peut continuer d'être affectée pendant une certaine période de temps
+      après l'arrivée des surverses avant de retrouver une meilleur qualité par les effets combinés de
+      la dilution, du transport et de la dégradation des contaminants. On peut toutefois estimer que
+      la prochaine marée haute aura nettoyé le site.</p>
+      
+      <p>L'application permet de charger plusieurs jeux de données et de les comparer.</p>
+      
+      <!---
+      <h2>La base de données</h2>
+      La base de données comprend les résultats de nombreuses simulations lagrangiennes de panaches.
+      A partir d'une simulation hydrodynamique 2D de la région d'intérêt qui comprend 14 cycles de marées
+      qui représentent une bonne variabilité des marées 
+      --->
+  </body>
+</html>
