@@ -43,15 +43,18 @@ import wx.lib.wordwrap as wx_ww
 import wx.aui          as wx_AUI
 import wx.html         as wx_html
 
-try:
-    supPath = os.path.join( os.environ['INRS_DEV'], 'H2D2-tools', 'script'  )
-except KeyError:
-    supPath = os.path.normpath( os.environ['INRS_H2D2_TOOLS'] )
+if getattr(sys, 'frozen', False):
+    supPath = sys._MEIPASS
+else:
+    try:
+        supPath = os.path.join( os.environ['INRS_DEV'], 'H2D2-tools', 'script'  )
+    except KeyError:
+        supPath = os.path.normpath( os.environ['INRS_H2D2_TOOLS'] )
 if os.path.isdir(supPath):
     if supPath not in sys.path:
         sys.path.append(supPath)
 else:
-    raise
+    raise RuntimeError('Supplementary import path not found: "%s"' % supPath)
 
 from __about__ import __author__, __version__, __copyright__
 from ASGlobalParameters import ASGlobalParameters
