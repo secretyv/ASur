@@ -28,6 +28,7 @@ ASModel_data = [
     ('bitmaps/*.png',       'bitmaps'),
     ('bitmaps/LICENSE.TXT', 'bitmaps'),
     ('help/Asur.*',         'help'),
+    ('help/*.htm*',         'help'),
     ('help/images',         'help/images'),
     ('traduction',          'traduction'),
     (findFileInPath('gdalsrsinfo.exe'), '.'),
