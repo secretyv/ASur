@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #************************************************************************
-# --- Copyright (c) INRS 2018
+# --- Copyright (c) Yves Secretan 2018
 # --- Institut National de la Recherche Scientifique (INRS)
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
