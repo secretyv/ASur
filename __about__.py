@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-__version__      = "2.0rc1"
+__version__      = "2.0"
 __author__       = "Yves Secretan (previously INRS - Centre ETE)"
 __author_email__ = "Yves.Secretan@ete.inrs.ca"
 __copyright__    = "Copyright (c) 2016 {}\nCopyright (c) 2018 {}".format('INRS', 'Yves Secretan')
