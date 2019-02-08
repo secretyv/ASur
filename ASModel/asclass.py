@@ -38,6 +38,7 @@ class ASModel:
         La fonction __init__() construit un objet ASModel. Elle configure le système.
         """
         self.m_rivers = Rivers()
+        LOGGER.debug('ASModel: %s', dataDir)
         self.m_rivers.load(dataDir)
 
         self.m_points = OverflowPoints()
