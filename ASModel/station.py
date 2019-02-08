@@ -453,7 +453,7 @@ class OverflowPoint:
         if not tide_cycles:
             cycles = self.m_tideRsp
         else:
-            cycles = [ self.getTideResponse(ii) for ii in tide_cycles]
+            cycles = [ r for r in (self.getTideResponse(ii) for ii in tide_cycles) if r ]
         LOGGER.trace('OverFlowPoint.getHitsForSpillWindow(): cycles[%d]', len(cycles))
         for tideRsp in cycles:
             LOGGER.trace('   %s', tideRsp)
@@ -487,8 +487,8 @@ class OverflowPoint:
             ]
         """
         LOGGER.trace('OverflowPoint.doPlumes from %s to %s', t_start, t_end)
-        hits = self.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, tide_cycles, merge_transit_times=True)
-        assert len(hits) == 1
+        hitss = self.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, tide_cycles, merge_transit_times=True)
+        assert len(hitss) in [0, 1]
 
         # ---
         md5s = []
@@ -497,22 +497,23 @@ class OverflowPoint:
             res.append( ASPlume(name=self.m_root.m_name, poly=self.m_root.m_poly) )
         except Exception as e:
             pass
-        for hit in hits[0]:
-            if hit and hit.md5 not in md5s:
-                md5s.append(hit.md5)
-                ptd = hit.pnt
-                ptdTideData = ptd.getTideData()
-                kwargs = {}
-                kwargs['dilution'] = ptdTideData[-1]
-                kwargs['name'] = self.m_parent.m_name if self.m_parent else self.m_name
-                kwargs['poly'] = self.m_parent.m_poly if self.m_parent else self.m_poly
-                kwargs['tide'] = ptdTideData[:2]
-                kwargs['t0']   = hit.t0
-                kwargs['tc']   = hit.tc
-                #kwargs['dt']   = -1.0
-                kwargs['isDirect']= hit.dd
-                kwargs['plume']   = ptd.getPath(hit.ix, hit.iy)
-                res.append( ASPlume(**kwargs) )
+        for hits in hitss:
+            for hit in hits:
+                if hit and hit.md5 not in md5s:
+                    md5s.append(hit.md5)
+                    ptd = hit.pnt
+                    ptdTideData = ptd.getTideData()
+                    kwargs = {}
+                    kwargs['dilution'] = ptdTideData[-1]
+                    kwargs['name'] = self.m_parent.m_name if self.m_parent else self.m_name
+                    kwargs['poly'] = self.m_parent.m_poly if self.m_parent else self.m_poly
+                    kwargs['tide'] = ptdTideData[:2]
+                    kwargs['t0']   = hit.t0
+                    kwargs['tc']   = hit.tc
+                    #kwargs['dt']   = -1.0
+                    kwargs['isDirect']= hit.dd
+                    kwargs['plume']   = ptd.getPath(hit.ix, hit.iy)
+                    res.append( ASPlume(**kwargs) )
 
         LOGGER.trace('OverflowPoint.doPlumes done')
         return res
