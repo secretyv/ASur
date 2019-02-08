@@ -728,14 +728,15 @@ class ASur(wx.Frame):
             dlg.Destroy()
 
     def __do_mnu_open(self, dirname):
-        # ---  Check if allready open
+        # ---  Check if already open
         for bbModel in self.bbModels:
             if dirname == bbModel.getDataDir():
                 return
         # ---  Construct model
+        self.LOGGER.trace('__do_mnu_open: %s', dirname)
         self.bbModels.append( ASModel.ASModel(dirname) )
         self.bbModels.sort(key = ASModel.ASModel.getDataDir)
-        # ---  Fill activ cycles list
+        # ---  Fill active cycles list
         self.bbCycles = self.__getAllActivCycles()
         # ---  Fill list
         self.__fillPoints()
@@ -757,15 +758,22 @@ class ASur(wx.Frame):
             if (len(dirname) > 0):
                 wx.BeginBusyCursor()
                 try:
-                    self.bbModels = []
-                    subdirs = next(os.walk(dirname))[1]
-                    if subdirs:
-                        for subdir in subdirs:
-                            fullpath = os.path.join(dirname, subdir)
-                            self.__do_mnu_open(fullpath)
+                    mdldirs = []
+                    root, subdirs, files = next(os.walk(dirname))
+                    if "overflow.tide.txt" in files:
+                        mdldirs.append(dirname)
+                    for subdir in subdirs:
+                        fullpath = os.path.join(dirname, subdir)
+                        files = next(os.walk(fullpath))[2]
+                        if "overflow.tide.txt" in files:
+                            mdldirs.append(fullpath)
+                    if mdldirs:
+                        self.bbModels = []
+                        for mdldir in mdldirs: 
+                            self.__do_mnu_open(mdldir)
+                        self.__fillModelMenu()
                     else:
-                        self.__do_mnu_open(dirname)
-                    self.__fillModelMenu()
+                        errMsg = "%s ne comprend aucun répertoire de données valide" % dirname
                 except Exception as e:
                     errMsg = '%s\n%s' % (str(e), traceback.format_exc())
                     #errMsg = str(e)
