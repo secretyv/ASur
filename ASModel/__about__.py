@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-__version__      = "18.12"
+__version__      = "18.12p1"
 __name__         = "ASModel"
 __author__       = "Yves Secretan (previously INRS - Centre ETE)"
 __author_email__ = "Yves.Secretan@ete.inrs.ca"
