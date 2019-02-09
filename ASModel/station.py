@@ -453,7 +453,10 @@ class OverflowPoint:
         if not tide_cycles:
             cycles = self.m_tideRsp
         else:
-            cycles = [ r for r in (self.getTideResponse(ii) for ii in tide_cycles) if r ]
+            # Cython chokes at a single expression
+            # Rewrite as 2 expressions
+            cycles = [ self.getTideResponse(ii) for ii in tide_cycles ]
+            cycles = [ r for r in cycles if r ]
         LOGGER.trace('OverFlowPoint.getHitsForSpillWindow(): cycles[%d]', len(cycles))
         for tideRsp in cycles:
             LOGGER.trace('   %s', tideRsp)
