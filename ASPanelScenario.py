@@ -315,8 +315,7 @@ class ASPanelScenario(wx.Panel):
                 tides = item.GetData()['tides']
                 dt1 = self.tree.GetItemWindow(item, 1).getTIni()
                 dt2 = self.tree.GetItemWindow(item, 1).getTFin()
-                if tides:
-                    res = [ Overflow(item.GetData()['id'], dt1, dt2, tides) ]
+                res = [ Overflow(item.GetData()['id'], dt1, dt2, tides) ]
         elif lvl == 3:
             if item.IsChecked():
                 res = [ item.GetText() ]
@@ -340,7 +339,7 @@ class ASPanelScenario(wx.Panel):
     def setNode3State(node):
         """
         Set the tree state. According to the number of selected
-        childrens, a node will be checked, unchecked or undetermined.
+        children, a node will be checked, unchecked or undetermined.
         """
         nCheck = 0
         nChild = 0
