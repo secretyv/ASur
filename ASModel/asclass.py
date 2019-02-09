@@ -111,7 +111,7 @@ class ASModel:
         """
         assert isinstance(dt,           datetime.timedelta)
         assert isinstance(overflows,    (list, tuple))
-        assert isinstance(overflows[0], Overflow)
+        assert len(overflows) == 0 or isinstance(overflows[0], Overflow)
 
         res = []
         for o in overflows:
@@ -136,7 +136,7 @@ class ASModel:
         """
         assert isinstance(dt,           datetime.timedelta)
         assert isinstance(overflows,    (list, tuple))
-        assert isinstance(overflows[0], Overflow)
+        assert len(overflows) == 0 or isinstance(overflows[0], Overflow)
 
         res = []
         for o in overflows:
