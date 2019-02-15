@@ -109,6 +109,7 @@ class ASModel:
         ]
         Tous les temps sont UTC.
         """
+        LOGGER.trace('ASModel.getOverflowData')
         assert isinstance(dt,           datetime.timedelta)
         assert isinstance(overflows,    (list, tuple))
         assert len(overflows) == 0 or isinstance(overflows[0], Overflow)
@@ -134,6 +135,7 @@ class ASModel:
         ]
         Tous les temps sont UTC.
         """
+        LOGGER.trace('ASModel.getOverflowPlumes')
         assert isinstance(dt,           datetime.timedelta)
         assert isinstance(overflows,    (list, tuple))
         assert len(overflows) == 0 or isinstance(overflows[0], Overflow)
@@ -142,6 +144,7 @@ class ASModel:
         for o in overflows:
             try:
                 p = self.m_points[o.name]
+                LOGGER.debug('%s - %s', str(o), str(p))
                 r = p.doPlumes(o.tini, o.tend, dt, self.m_tide, tide_cycles=o.tides)
 
                 res.extend(r)
