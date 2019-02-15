@@ -82,8 +82,8 @@ class ASPanelPath(wx.Panel):
     
     def plotPaths(self, asurMdl, plumes, dtini, dtfin, dtmax):
         LOGGER.trace(".".join([os.path.splitext(__file__)[0], "plotPaths"]))
-        self.pnlPath.plotPlumes(plumes, draw=True)
         self.pnlCtrl.fillTree  (plumes)
+        self.pnlPath.plotPlumes(plumes, draw=True)
 
     def setParameters(self, prm):
         LOGGER.trace(".".join([os.path.splitext(__file__)[0], "setParameters"]))
