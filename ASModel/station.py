@@ -508,11 +508,12 @@ class OverflowPoint:
                     ptdTideData = ptd.getTideData()
                     kwargs = {}
                     kwargs['dilution'] = ptdTideData[-1]
-                    kwargs['name'] = self.m_parent.m_name if self.m_parent else self.m_name
-                    kwargs['poly'] = self.m_parent.m_poly if self.m_parent else self.m_poly
-                    kwargs['tide'] = ptdTideData[:2]
-                    kwargs['t0']   = hit.t0
-                    kwargs['tc']   = hit.tc
+                    kwargs['name']   = self.m_name
+                    kwargs['parent'] = self.m_parent.m_name if self.m_parent else self.m_name
+                    kwargs['poly']   = self.m_parent.m_poly if self.m_parent else self.m_poly
+                    kwargs['tide']   = ptdTideData[:2]
+                    kwargs['t0']     = hit.t0
+                    kwargs['tc']     = hit.tc
                     #kwargs['dt']   = -1.0
                     kwargs['isDirect']= hit.dd
                     kwargs['plume']   = ptd.getPath(hit.ix, hit.iy)
