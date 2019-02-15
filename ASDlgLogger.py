@@ -32,11 +32,15 @@ zones = [
 "INRS.ASur",
 "INRS.ASur.frame",
 "INRS.ASur.panel.path",
+"INRS.ASur.panel.path.plot",
+"INRS.ASur.panel.path.tree",
 "INRS.ASur.panel.plot",
 "INRS.ASur.panel.scenario",
 ]
 
 levels = [
+"error",
+"warning",
 "info",
 "debug",
 "trace",
