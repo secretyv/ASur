@@ -290,7 +290,7 @@ class ASPanelPlot(ASPanelWxMPL):
         kwargs['linewidth'] = 1.5
         kwargs['color']     = '#C0C0C0'   # light gray
         kwargs['marker']    = None
-        self.axes.axvline(dtmin, **kwargs, label='Fenêtre de surverse')
+        self.axes.axvline(dtmin, label='Fenêtre de surverse', **kwargs)
         self.axes.axvline(dtmax, **kwargs)
 
     def __plotColorBar(self):
