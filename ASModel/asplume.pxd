@@ -15,7 +15,9 @@ cdef class ASPlume:
     cdef public double       dilution
     cdef public datetime.datetime injectionTime
     cdef public bint         isPlumeDirect
+    cdef public str          parentName
     cdef public object       plume
+    cdef public int          plumeId
     cdef public str          stationName
     cdef public list         stationPolygon
     cdef public tuple        tide
