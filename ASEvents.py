@@ -22,6 +22,7 @@ Events
 
 import wx.lib.newevent
 
+ASEventMessage,ASEVT_MESSAGE= wx.lib.newevent.NewCommandEvent()
 ASEventMotion, ASEVT_MOTION = wx.lib.newevent.NewCommandEvent()
 ASEventDClick, ASEVT_DCLICK = wx.lib.newevent.NewCommandEvent()
 
