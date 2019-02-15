@@ -11,6 +11,8 @@ cimport datetime
 #from numpy cimport ndarray
 
 cdef class ASPlume:
+    #cdef public int          glbPlumeCtr
+
     cdef public datetime.datetime contactTime
     cdef public double       dilution
     cdef public datetime.datetime injectionTime
