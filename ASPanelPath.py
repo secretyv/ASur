@@ -22,8 +22,8 @@
 """
 """
 
+import os
 if __name__ == "__main__":
-    import os
     import sys
     supPath = r'E:\bld-1810\H2D2-tools\script'
     if os.path.isdir(supPath) and supPath not in sys.path: sys.path.append(supPath)
@@ -73,18 +73,23 @@ class ASPanelPath(wx.Panel):
             raise
 
     def onTreeCheck(self):
+        LOGGER.trace(".".join([os.path.splitext(__file__)[0], "onTreeCheck"]))
         try:
             plumes = self.pnlCtrl.getCheckedItems()
         except AttributeError:  # provision for empty tree
             plumes = []
-        self.pnlPath.plotPlumes(plumes)
+        self.pnlPath.updatePlumes(plumes)
     
     def plotPaths(self, asurMdl, plumes, dtini, dtfin, dtmax):
-        self.pnlPath.plotPlumes(plumes)
+        LOGGER.trace(".".join([os.path.splitext(__file__)[0], "plotPaths"]))
+        self.pnlPath.plotPlumes(plumes, draw=True)
         self.pnlCtrl.fillTree  (plumes)
 
     def setParameters(self, prm):
+        LOGGER.trace(".".join([os.path.splitext(__file__)[0], "setParameters"]))
         self.pnlPath.params = prm
+        plumes = self.pnlCtrl.getAllItems()
+        self.pnlPath.plotPlumes(plumes, draw=False)
         self.onTreeCheck()
         
 if __name__ == "__main__":
