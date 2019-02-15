@@ -63,7 +63,7 @@ from ASPanelPlot      import ASPanelPlot
 from ASPanelPath      import ASPanelPath
 from ASPathParameters import ASPathParameters, CLR_SRC, ELL_STL
 from ASTranslator     import translator
-from ASEvents         import ASEVT_MOTION, ASEVT_BUTTON
+from ASEvents         import ASEVT_MESSAGE, ASEVT_MOTION, ASEVT_BUTTON
 from ASConst          import DATE_MIN, DATE_MAX, LOCAL_TZ
 import ASDlgLogger
 import ASDlgParamGlobal
@@ -71,7 +71,7 @@ import ASDlgParamPath
 import ASDlgTides
 import ASModel
 
-#--- Help provider for contexutal help (broken!!)
+#--- Help provider for contextual help (broken!!)
 # provider = wx.SimpleHelpProvider()
 # wx.HelpProvider.Set(provider)
 
@@ -114,6 +114,7 @@ class ASur(wx.Frame):
     CLC_DELTAT = datetime.timedelta(seconds=CLC_DELTAS)
 
     # ID_MDL = [ wx.Window.NewControlId() for i in range(9)]
+    TIMER_ID_MSG = 1000
 
     def __init__(self, *args, **kwds):
         self.appMode = kwds.pop("appMode", GlbModes.standard)
@@ -136,6 +137,7 @@ class ASur(wx.Frame):
         self.dlgHelp   = None
         self.dlgParamPath = None # ASDlgParamPath.ASDlgParamPath(None)
         self.statusbar = self.CreateStatusBar(2)
+        self.tmrMsg    = wx.Timer(self, ASur.TIMER_ID_MSG)
 
         self.histCfg = wx.Config('ASur - File history', style=wx.CONFIG_USE_LOCAL_FILE)
         self.prmsCfg = wx.Config('ASur - Parameters',   style=wx.CONFIG_USE_LOCAL_FILE)
@@ -149,7 +151,7 @@ class ASur(wx.Frame):
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_open,  self.mnu_file_open)
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_add,   self.mnu_file_add)
         self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_hist, id=wx.ID_FILE1, id2=wx.ID_FILE9)
-        # TODO : il faut regenerer les ID à chaque appel
+        # TODO : il faut regénérer les ID à chaque appel
         # self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_xone, id=self.ID_MDL[0], id2=self.ID_MDL[-1])
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_close, self.mnu_file_close)
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_quit,  self.mnu_file_quit)
@@ -171,7 +173,9 @@ class ASur(wx.Frame):
         self.Bind(wx.EVT_TOOL,      self.on_btn_zsl,        self.btn_zsl)
 
         self.Bind(wx_AUI.EVT_AUINOTEBOOK_PAGE_CHANGED, self.on_page_change, self.nbk_dspl)
-        self.Bind(ASEVT_MOTION, self.cb_panel)
+        self.Bind(wx.EVT_TIMER,  self.cb_panel_message_clear, self.tmrMsg)
+        self.Bind(ASEVT_MESSAGE, self.cb_panel_message)
+        self.Bind(ASEVT_MOTION,  self.cb_panel_motion)
         #self.Bind(ASEVT_BUTTON, self.on_btn_parm_path)
 
         self.mnu_states = {
@@ -983,7 +987,14 @@ class ASur(wx.Frame):
     def on_mnu_help_log(self, event):
         dlg = ASDlgLogger.ASDlgLogZone(self)
         if dlg.ShowModal() == wx.ID_OK:
-            LVLS = {'info' : logging.INFO, 'debug': logging.DEBUG, 'trace': logging.TRACE}
+            LVLS = {
+                'critical' : logging.CRITICAL, 
+                'error'    : logging.ERROR, 
+                'warning'  : logging.WARNING, 
+                'info'     : logging.INFO, 
+                'debug'    : logging.DEBUG, 
+                'trace'    : logging.TRACE
+                }
             z, l = dlg.getValues()
             self.LOGGER.removeHandler(self.logHndlr)
             self.LOGGER = logging.getLogger(z)
@@ -1014,7 +1025,16 @@ class ASur(wx.Frame):
         infoDlg.License     = wx_ww.wordwrap(licTxt, 450, wx.ClientDC(self))
         wx_adv.AboutBox(infoDlg)
 
-    def cb_panel(self, evt):
+    def cb_panel_message(self, evt):
+        txt = evt.text    if hasattr(evt, 'text')    else ""
+        tmr = evt.timeout if hasattr(evt, 'timeout') else 1
+        self.statusbar.SetStatusText(txt, 0)
+        self.tmrMsg.Start(tmr*1000)
+        
+    def cb_panel_message_clear(self, evt):
+        self.statusbar.SetStatusText('Status', 0)
+    
+    def cb_panel_motion(self, evt):
         xy = evt.xy if hasattr(evt, 'xy') else ()
         ll = evt.ll if hasattr(evt, 'll') else ()
         th = evt.th if hasattr(evt, 'th') else ()
