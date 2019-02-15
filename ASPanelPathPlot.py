@@ -670,7 +670,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
                     for CS in layer.CSS:
                         self.__remove_one_CS(CS)
                     layer.setVisible(False)
-        if dirty:
+        if dirty and self.olPlgCS:
             self.__remove_one_CS(self.olPlgCS)
             self.__append_one_CS(self.olPlgCS)
 
@@ -710,8 +710,9 @@ class ASPanelPathPlot(ASPanelWxMPL):
         polys = {}
         for plume in plumes:
             polys[plume.parentName] = plume.stationPolygon
-            if plume.stationName == 'Root':
-                continue
+            if plume.stationName == 'Root': continue
+            if not plume.plume: continue
+
             txy = np.array(plume.plume)
             # ---  Indice du temps de contact
             # Les temps sont en epoch par rapport à une référence bâtarde
