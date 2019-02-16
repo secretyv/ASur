@@ -80,7 +80,7 @@ class OverflowPointOneTide(object):
         self.m_river    = river
         self.m_dist2SL  = dist
         self.m_dataDir  = ''
-        self.m_pathDir  = []
+        self.m_pathDirs = []
         self.m_dt       = -1.0    # Tide cycle duration
         self.m_dh       =  0.0    # Tide height
         self.m_tideDta  = {}      # Dic of { ix : (iy, a) }
@@ -103,7 +103,7 @@ class OverflowPointOneTide(object):
         return '%s: at %s' % ('OverflowPointOneTide', self.getId())
 
     def getTideData(self):
-        return self.m_dt, self.m_dh, self.m_tideDta, self.m_pathDta, self.m_dataDir, self.m_pathDir, self.m_dilution
+        return self.m_dt, self.m_dh, self.m_tideDta, self.m_pathDta, self.m_dataDir, self.m_pathDirs, self.m_dilution
 
     def setTideData(self, dt, dh, tDta={}, pDta={}, dtaDir='', pthDir=[], dil=-1.0):
         self.m_dt = dt
@@ -111,7 +111,7 @@ class OverflowPointOneTide(object):
         self.m_tideDta = tDta
         self.m_pathDta = pDta
         self.m_dataDir = dtaDir
-        self.m_pathDir = pthDir
+        self.m_pathDirs= pthDir
         self.m_dilution= dil
 
     def getId(self):
@@ -175,9 +175,9 @@ class OverflowPointOneTide(object):
             except KeyError:
                 self.m_pathDta[ix] = other.m_pathDta[ix]
                 modif = True
-        for p in other.m_pathDir:
-            if p not in self.m_pathDir:
-                self.m_pathDir.append(p)
+        for p in other.m_pathDirs:
+            if p not in self.m_pathDirs:
+                self.m_pathDirs.append(p)
 
     def __getRiverTransitTime(self):
         return self.m_river.getTransitTimes(self.m_dist2SL) if self.m_river else [0.0]
@@ -317,14 +317,14 @@ class OverflowPointOneTide(object):
         iy, md5, dd = self.__getSinglePathData(ix, iy)
         fname = 'path-%s.pkl' % (md5)
         pth = None
-        for pth in self.m_pathDir:
-            fullPath = os.path.join(pth, fname)
+        for p in self.m_pathDirs:
+            fullPath = os.path.join(p, fname)
             if os.path.isfile(fullPath):
                 with open(fullPath, 'rb') as f: pth = pickle.load(f, encoding='bytes')
         if not pth:
             LOGGER.warning('Path file "%s" not found in:', fname)
-            for pth in self.m_pathDir:
-                LOGGER.warning('   %s', pth)
+            for p in self.m_pathDirs:
+                LOGGER.warning('   %s', p)
         return pth
 
     def dump(self):
@@ -351,7 +351,7 @@ class OverflowPointOneTide(object):
         for i, j, md5, dd in data:
             self.m_pathDta.setdefault(i, [])
             self.m_pathDta[i].append( (j,md5,dd) )
-        self.m_pathDir = [pathDir]
+        self.m_pathDirs = [pathDir]
         self.m_dilution = dilution
         LOGGER.trace('OverflowPointOneTide.loadPath: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))
 
@@ -364,14 +364,14 @@ class OverflowPointOneTide(object):
             for iy,md5,dd in dta:
                 fname = 'path-%s.pkl' % (md5)
                 found = False
-                for pth in self.m_pathDir:
-                    fullPath = os.path.join(pth, fname)
+                for p in self.m_pathDirs:
+                    fullPath = os.path.join(p, fname)
                     if os.path.isfile(fullPath):
                         found = True
                 if not found:
                     LOGGER.warning('Path file "%s" not found in:', fname)
-                    for pth in self.m_pathDir:
-                        LOGGER.warning('   %s', pth)
+                    for p in self.m_pathDirs:
+                        LOGGER.warning('   %s', p)
 
     def checkInclusion(self, other):
         """
