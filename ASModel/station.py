@@ -350,7 +350,7 @@ class OverflowPointOneTide(object):
         self.m_pathDta = {}
         for i, j, md5, dd in data:
             self.m_pathDta.setdefault(i, [])
-            self.m_pathDta[i].append( (j,md5,dd) )
+            self.m_pathDta[i].append( (j,md5,bool(dd)) )
         self.m_pathDirs = [pathDir]
         self.m_dilution = dilution
         LOGGER.trace('OverflowPointOneTide.loadPath: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))

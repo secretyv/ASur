@@ -57,7 +57,7 @@ cdef class OverflowPointOneTide(object):
     cpdef object       dump            (OverflowPointOneTide self)
     @cython.locals (a = double, i = long, j = long)
     cpdef              loadTide        (OverflowPointOneTide self, double dt, double dh, list data, str dataDir, double dilution)
-    @cython.locals (dd = bint, i = long, j = long, md5 = str)
+    @cython.locals (dd = long, i = long, j = long, md5 = str)
     cpdef              loadPath        (OverflowPointOneTide self, double dt, double dh, list data, str pathDir, double dilution)
     @cython.locals (dd = bint, dta = list, fname = str, found = bint, fullPath = str, ix = long, iy = long, md5 = str, p = str)
     cpdef              checkPathFiles  (OverflowPointOneTide self)
