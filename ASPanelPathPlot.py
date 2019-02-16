@@ -209,7 +209,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         nVisible = len( [1 for layer in self.layers if layer.isVisible()] )
         if nVisible > ASPanelPathPlot.DATA_CURSOR_NMAX:
             msg = "Trop de tracés détectés (%d/%d)" % (nVisible, ASPanelPathPlot.DATA_CURSOR_NMAX)
-            wx.PostEvent(self, ASEventMessage(self.GetId(), text=msg, timeout=1))
+            wx.PostEvent(self, ASEventMessage(self.GetId(), text=msg, timeout=1.5))
             
     def on_mouse_move(self, evt):
         """
