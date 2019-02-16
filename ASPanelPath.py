@@ -74,11 +74,15 @@ class ASPanelPath(wx.Panel):
 
     def onTreeCheck(self):
         LOGGER.trace(".".join([os.path.splitext(__file__)[0], "onTreeCheck"]))
+        wx.BeginBusyCursor()
         try:
-            plumes = self.pnlCtrl.getCheckedItems()
-        except AttributeError:  # provision for empty tree
-            plumes = []
-        self.pnlPath.updatePlumes(plumes)
+            try:
+                plumes = self.pnlCtrl.getCheckedItems()
+            except AttributeError:  # provision for empty tree
+                plumes = []
+            self.pnlPath.updatePlumes(plumes)
+        finally:
+            wx.EndBusyCursor()
     
     def plotPaths(self, asurMdl, plumes, dtini, dtfin, dtmax):
         LOGGER.trace(".".join([os.path.splitext(__file__)[0], "plotPaths"]))
