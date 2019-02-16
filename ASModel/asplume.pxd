@@ -10,9 +10,9 @@ import cython
 cimport datetime
 #from numpy cimport ndarray
 
-cdef class ASPlume:
-    #cdef public long         glbPlumeCtr
+cdef long PLUME_CTR
 
+cdef class ASPlume:
     cdef public datetime.datetime contactTime
     cdef public double       dilution
     cdef public datetime.datetime injectionTime

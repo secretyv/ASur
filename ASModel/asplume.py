@@ -24,13 +24,14 @@ import logging
 
 LOGGER = logging.getLogger("INRS.ASModel.plume")
 
+# ---  Cython doesn't support class static attributes. Use a global variable
+PLUME_CTR = 1
+
 class ASPlume:
     """
     Structure to hold all information pertaining to a
     particle path (plume)
     """
-    glbPlumeCtr = 1
-
     def __init__(self, 
                  dilution=-1.0, 
                  name='', 
@@ -41,6 +42,7 @@ class ASPlume:
                  tc=datetime.now(), 
                  isDirect=False, 
                  plume=None):
+        global PLUME_CTR
         self.dilution       = dilution  # 
         self.stationName    = name      # string
         self.parentName     = parent    # string
@@ -50,8 +52,8 @@ class ASPlume:
         self.contactTime    = tc        # datetime
         self.isPlumeDirect  = isDirect  # Bool
         self.plume          = plume
-        self.plumeId        = ASPlume.glbPlumeCtr
-        ASPlume.glbPlumeCtr += 1
+        self.plumeId        = PLUME_CTR
+        PLUME_CTR += 1
 
     def __lt__(self, other):
         """
