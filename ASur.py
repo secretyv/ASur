@@ -1029,7 +1029,7 @@ class ASur(wx.Frame):
         txt = evt.text    if hasattr(evt, 'text')    else ""
         tmr = evt.timeout if hasattr(evt, 'timeout') else 1
         self.statusbar.SetStatusText(txt, 0)
-        self.tmrMsg.Start(tmr*1000)
+        self.tmrMsg.Start(int(tmr*1000))
         
     def cb_panel_message_clear(self, evt):
         self.statusbar.SetStatusText('Status', 0)
