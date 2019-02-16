@@ -233,7 +233,7 @@ class ASPanelScenario(wx.Panel):
 
         Args:
             bbModels (list):    List of models
-            bbTides (list):     List of activ tides
+            bbTides  (list):    List of active tides
             addTides (bool):    True to add tides
 
          Returns:
@@ -319,7 +319,7 @@ class ASPanelScenario(wx.Panel):
         elif lvl == 3:
             if item.IsChecked():
                 res = [ item.GetText() ]
-        LOGGER.trace('getPoints() checked points: %s', res)
+        LOGGER.trace('getPoints() checked points: %s', [r.name for r in res])
         return res
 
     def getPointsChecked(self):
@@ -357,12 +357,13 @@ class ASPanelScenario(wx.Panel):
                 else:
                     node.Set3StateValue(wx.CHK_UNDETERMINED)
                     nCheck = .5
-            except Exception:
+            except:
                 pass
         else:
             nChild = 1
             if node.IsChecked():
                 nCheck = 1
+            node.GetWindow(1).Enable(node.IsChecked())
         return nCheck/nChild
 
     @staticmethod
@@ -394,13 +395,13 @@ class ASPanelScenario(wx.Panel):
         
     def onTreeCheck(self, event):
         """
-        Handler for event tree check, call when an item in the tree
+        Handler for event tree check, called when an item in the tree
         is checked/unchecked. The state of the tree will be modified to
         reflect the selection.
         """
-        item = event.GetItem()
+        node = event.GetItem()
         try:
-            self.tree.GetItemWindow(item, 1).Enable(item.IsChecked())
+            self.tree.GetItemWindow(node, 1).Enable(node.IsChecked())
         except AttributeError:  # level 1 nodes have no ItemWindow
             pass    
         # ---
