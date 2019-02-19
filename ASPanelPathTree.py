@@ -190,7 +190,6 @@ class ASPanelPathTree(wx.Panel):
             child = self.tree.AppendItem(nodeDir, info, ct_type=1, data=plume)
             child.Set3State(False)
 
-
         ASPanelPathTree.checkNodeRecurse(root, True)
         self.tree.Show()
         self.Refresh()
@@ -239,6 +238,7 @@ class ASPanelPathTree(wx.Panel):
 if __name__ == "__main__":
     from datetime import datetime
     import pytz
+    import random
     import wx
     from ASModel import ASPlume
     
@@ -253,12 +253,19 @@ if __name__ == "__main__":
         fr.SetSize((800, 600))
         panel = ASPanelPathTree(fr, wx.ID_ANY, cbOnTreeCheck=onTreeCheck)
         
-        plumes = [ 
-            ASPlume(name='Root',    tide=(-1,-1), poly=[(0,0), (1,1)]),
-            ASPlume(dilution=1.0e03, name='station', tide=(10, 1), t0=datetime.now(tz=pytz.utc), isDirect=False),
-            ASPlume(dilution=1.0e03, name='station', tide=(10, 1), t0=datetime.now(tz=pytz.utc), isDirect=True),
-            ASPlume(dilution=1.0e03, name='station', tide=(10, 2), t0=datetime.now(tz=pytz.utc), isDirect=False),
-        ]
+        dilutions = 6
+        stations  = 10
+        tides     = 10
+        random.seed()
+        plumes = [ ASPlume(name='Root', tide=(-1,-1), poly=[(0,0), (1,1)]) ]
+        for i in range(5000):
+            jd  = random.randint(1,  6)
+            js  = random.randint(1, 10)
+            jt  = random.randint(1, 10)
+            jb  = random.randint(0,  1)
+            plume = ASPlume(dilution=pow(10,-jd), name='station%2d' % js, tide=(jt, 1), t0=datetime.now(tz=pytz.utc), isDirect=bool(jb))
+            plumes.append(plume)
+
         panel.fillTree(plumes)
         plumes = panel.getCheckedItems()
         
