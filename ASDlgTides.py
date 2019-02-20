@@ -78,7 +78,7 @@ class ASDlgTides(wx.Dialog):
         event.Skip()
 
     def on_btn_cancel(self, event):
-        self.Destroy()
+        event.Skip()
 
 # end of class ASDlgTides
 

@@ -246,7 +246,7 @@ class ASDlgParamPath(wx.Dialog):
         event.Skip()
 
     def onBtnCancel(self, event):
-        self.Destroy()
+        event.Skip()
 
     def getParameters(self):
         prm = ASPathParameters()
