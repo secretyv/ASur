@@ -36,6 +36,10 @@ zones = [
 "INRS.ASur.panel.path.tree",
 "INRS.ASur.panel.plot",
 "INRS.ASur.panel.scenario",
+"INRS.H2D2",
+"INRS.H2D2.Tools",
+"INRS.H2D2.Tools.ImageProcessor",
+"INRS.H2D2.Tools.ImageProcessor.GDAL",
 ]
 
 levels = [
@@ -104,9 +108,11 @@ class ASDlgLogZone(wx.Dialog):
 
     def on_btn_ok(self, event):
         event.Skip()
+        #self.EndModal(wx.ID_OK)
 
     def on_btn_cancel(self, event):
-        self.Destroy()
+        event.Skip()
+        #self.EndModal(wx.ID_CANCEL)
 
 if __name__ == "__main__":
     class MyApp(wx.App):
