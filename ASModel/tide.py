@@ -58,7 +58,10 @@ class TideRecord:
         return hash((self.dt, self.wl))
     
     def __lt__(self, other):
-        return (self.dt < other.dt) or (self.dt == other.dt and self.wl < other.wl)
+        # La version complète n'est pas compatible avec par exemple getNextHW.
+        # Il ne trouve plus la HW suivante mais retourne l'identique.
+        # return (self.dt < other.dt) or (self.dt == other.dt and self.wl < other.wl)
+        return (self.dt < other.dt)
 
     def __eq__(self, other):
         return self.dt == other.dt and self.wl == other.wl
