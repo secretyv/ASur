@@ -745,8 +745,6 @@ class ASur(wx.Frame):
         self.bbModels.sort(key = ASModel.ASModel.getDataDir)
         # ---  Fill active cycles list
         self.bbCycles = self.__getAllActivCycles()
-        # ---  Fill list
-        self.__fillPoints()
         # ---  Set title
         #dn = os.path.basename(dirname)
         #self.SetTitle("%s - %s" % (appTitle, dn))
@@ -776,8 +774,9 @@ class ASur(wx.Frame):
                             mdldirs.append(fullpath)
                     if mdldirs:
                         self.bbModels = []
-                        for mdldir in mdldirs: 
+                        for mdldir in mdldirs:
                             self.__do_mnu_open(mdldir)
+                        self.__fillPoints()
                         self.__fillModelMenu()
                     else:
                         errMsg = "%s ne comprend aucun répertoire de données valide" % dirname
@@ -802,6 +801,7 @@ class ASur(wx.Frame):
                 wx.BeginBusyCursor()
                 try:
                     self.__do_mnu_open(dirname)
+                    self.__fillPoints()
                     self.__fillModelMenu()
                 except Exception as e:
                     errMsg = '%s\n%s' % (str(e), traceback.format_exc())
@@ -823,6 +823,7 @@ class ASur(wx.Frame):
             wx.BeginBusyCursor()
             try:
                 self.__do_mnu_open(dirname)
+                self.__fillPoints()
                 self.__fillModelMenu()
             except Exception as e:
                 self.history.RemoveFileFromHistory(fileNum)
