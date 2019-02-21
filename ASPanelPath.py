@@ -29,6 +29,7 @@ if __name__ == "__main__":
     if os.path.isdir(supPath) and supPath not in sys.path: sys.path.append(supPath)
 
 import logging    
+import traceback
 
 import wx
 
@@ -86,15 +87,28 @@ class ASPanelPath(wx.Panel):
     
     def plotPaths(self, asurMdl, plumes, dtini, dtfin, dtmax):
         LOGGER.trace(".".join([os.path.splitext(__file__)[0], "plotPaths"]))
-        self.pnlCtrl.fillTree  (plumes)
-        self.pnlPath.plotPlumes(plumes, draw=True)
+        wx.BeginBusyCursor()
+        try:
+            self.pnlCtrl.fillTree  (plumes)
+            #import cProfile as profile
+            #profile.runctx("self.pnlPath.plotPlumes(plumes, draw=True)", globals(), locals())
+            self.pnlPath.plotPlumes(plumes, draw=True)
+        except Exception as e:
+            errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+            LOGGER.error(errMsg)
+        finally:
+            wx.EndBusyCursor()
 
     def setParameters(self, prm):
         LOGGER.trace(".".join([os.path.splitext(__file__)[0], "setParameters"]))
-        self.pnlPath.params = prm
-        plumes = self.pnlCtrl.getAllItems()
-        self.pnlPath.plotPlumes(plumes, draw=False)
-        self.onTreeCheck()
+        wx.BeginBusyCursor()
+        try:
+            self.pnlPath.params = prm
+            plumes = self.pnlCtrl.getAllItems()
+            self.pnlPath.plotPlumes(plumes, draw=False)
+            self.onTreeCheck()
+        finally:
+            wx.EndBusyCursor()
         
 if __name__ == "__main__":
     class MyDialogBox(wx.Dialog):
