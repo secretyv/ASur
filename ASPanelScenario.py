@@ -131,6 +131,11 @@ class ASDuration(wx.Control):
         self.__do_layout(spacer=spacer)
 
     def __set_properties(self):
+        # dt = datetime.datetime(2019, 2, 18, 16, 31)
+        # dt = LOCAL_TZ.localize(dt)
+        # dt = dt.astimezone(pytz.utc)
+        # self.start.setTime(dt)
+        # self.end.setTime(dt)
         pass
 
     def __do_layout(self, spacer=20):
