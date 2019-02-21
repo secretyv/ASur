@@ -58,7 +58,7 @@ class TideRecord:
         return hash((self.dt, self.wl))
     
     def __lt__(self, other):
-        return str(self.dt) < str(other.dt)
+        return (self.dt < other.dt) or (self.dt == other.dt and self.wl < other.wl)
 
     def __eq__(self, other):
         return self.dt == other.dt and self.wl == other.wl
