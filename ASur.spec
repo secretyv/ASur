@@ -14,7 +14,7 @@ def findFileInPath(f):
 
 block_cipher = None
 
-ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\ASur'
+ROOTDIR = SPECPATH
 
 ASModel_path = [
    os.path.join(ROOTDIR, 'ASModel'),
@@ -43,6 +43,12 @@ python_hiddenimports = [
     # 'gdalarray',
     'pytimeparse',
     ]
+python_excludes = [
+    'PyQt4',
+    'PyQt5',
+    'FixTk',
+    'tkinter',
+    ]
 
 pb2_a = Analysis(['ASur.py'],
                  pathex         = ASModel_path,
@@ -51,7 +57,7 @@ pb2_a = Analysis(['ASur.py'],
                  hiddenimports  = ASModel_hiddenimports + python_hiddenimports,
                  hookspath      = [],
                  runtime_hooks  = [],
-                 excludes       = [],
+                 excludes       = python_excludes,
                  win_no_prefer_redirects=False,
                  win_private_assemblies =False,
                  cipher=block_cipher)
