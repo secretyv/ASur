@@ -1,51 +1,92 @@
 <!DOCTYPE html>
 <html>
-   <head>
-     <meta charset="UTF-8">
-     <title>ASur-2</title>
-   </head>
-  <body>
-      <h2>Onglet <em>Trajectoires</em></h2>
-      <p><img src="images/OngletTrajectoires.png" alt="OngletTrajectoires" /></p>
+    <head>
+        <meta charset="UTF-8">
+        <title>ASur-2</title>
+    </head>
+    <body>
+    
+    <h2>Onglet <em>Trajectoires</em></h2>
+    <p>
+    <img src="images/OngletTrajectoires.png" alt="OngletTrajectoires" />
+    </p>
 
-      <p>L'onglet présente 2 sections :</p>
-      <p>L'onglet Trajectoire présente deux volets&nbsp;:</p>
-      <ul>
-      <li>à gauche, l'arborescence des panaches</li>
-      <li>à droite, l'affichage</li>
-      </ul>
-      <p>Ce qui est tracé est contrôlé par l'arborescence, comment c'est tracé est contrôlé par les
-      <a href="01-02-Menu Paramètres.htm#GestionDeTracé">paramètres de tracé</a></p>
+    <p>L'onglet Trajectoire présente deux volets&nbsp;:</p>
+    <ul>
+    <li>à gauche, l'arborescence des panaches;</li>
+    <li>à droite, l'affichage.</li>
+    </ul>
+    <p>Ce qui est tracé est contrôlé par l'arborescence, comment c'est tracé est contrôlé par les
+    <a href="01-02-Menu Paramètres.htm#GestionDeTracé">paramètres de tracé</a></p>
 
-   <h3>L'arborescence</h3>
-   <p>La hiérarchie de l'arbre est la suivante&nbsp;:</p>
-   <ol>
-   <li>Les dilutions qui correspondent à un jeu de donnée</li>
-   <li>Les stations qui surversent</li>
-   <li>Les marées</li>
-   <li><a href="#Panaches directs et inversés">Les panaches directs et inversés</a></li>
-   <li>Les panaches</li>
-   </ol>
-   <p>Activer/désactiver un niveau va activer/désactiver tous les niveaux inférieurs.</p>
+    <h3>L'arborescence</h3>
+    <p>La hiérarchie de l'arbre est la suivante&nbsp;:</p>
+    <ol>
+    <li>Les dilutions qui correspondent à un jeu de donnée</li>
+    <li>Les stations qui surversent</li>
+    <li>Les marées</li>
+    <li><a href="#Panaches directs et inversés">Les panaches directs et inversés</a></li>
+    <li>Les panaches</li>
+    </ol>
+    <p>Activer/désactiver un niveau va activer/désactiver tous les niveaux inférieurs.</p>
 
-   <h3>Le tracé</h3>
-   <p>Sont représentés, si activés, le fond de carte, la ligne de berge, les tracés et les ellipses. 
-   Cela fait possiblement énormément d'information qu'il convient de bien gérer.
-   Une stratégie peut être, dans un premier temps, de désactiver tous les panaches sauf un ou deux.
-   Ensuite de jouer avec les <a href="01-02-Menu Paramètres.htm#GestionDeTracé">paramètres de tracé</a>
-   comme l'affichage des ellipses, la fréquence d'affichage etc.. Puis d'ajouter
-   </p>
+    <h3>Le tracé</h3>
+    <p>Sont représentés, si activés, et dans l'ordre:
+    <ul>
+    <li>le fond de carte</li>
+    <li>la ligne de berge</li>
+    <li>les tracés</li>
+    <li>les ellipses</li>
+    <li>les polygones qui représentent la plage et les points de surverse</li>
+    </ul>
+    Cela fait possiblement énormément d'information qu'il convient de bien gérer.
+    Une stratégie peut être, dans un premier temps, de désactiver tous les panaches sauf un ou deux.
+    Ensuite de jouer avec les <a href="01-02-Menu Paramètres.htm#GestionDeTracé">paramètres de tracé</a>
+    comme l'affichage des ellipses, la fréquence d'affichage etc.. Puis d'ajouter plus d'information au besoin.
+    </p>
 
-   <h3><a id="Panaches directs et inversés">La notion de panaches directs et inversés<a></h3>
-   <h4>Les panaches directs</h4>
-   <p>Les panaches directs sont obtenus par calcul d'une injection à partir du point de surverse. Lorsque l'ellipse qui modélise la dilution touche la cible du site d'étude, i.e le polygone qui représente le site, il y a contact. C'est ce contact qui est utilisé dans <a href="03-02-Onglet Graphe.htm">l'onglet Graphes</a>.</p>
+    <h3><a id="Panaches directs et inversés">La notion de panaches directs et inversés<a></h3>
+    <h4>Les panaches directs</h4>
+    <p>Les panaches directs sont obtenus par calcul d'une injection à partir du point de surverse. Lorsque l'ellipse qui modélise la dilution touche la cible du site d'étude, i.e le polygone qui représente le site, il y a contact. C'est ce contact qui est utilisé dans <a href="03-02-Onglet Graphe.htm">l'onglet Graphes</a>.</p>
    
-   <h4>Les panaches inversés</h4>
-   <p>Les panaches inversés sont obtenus en inversant la solution hydrodynamique, donc en remontant le temps
-   et le courant. Le site d'étude est alors pris comme point d'injection et l'ellipse de diffusion représente
-   la zone qui va influencer le point d'injection. C'est le contact avec l'un des polygones des points de
-   surverse qui est utilisé dans dans <a href="03-02-Onglet Graphe.htm">l'onglet Graphes</a>.
-   En fait, vu la largeur du site d'étude, ce sont 5 points d'injection qui ont été considérés.</p>
+    <h4>Les panaches inversés</h4>
+    <p>Les panaches inversés sont obtenus en inversant la solution hydrodynamique, donc en remontant le temps
+    et le courant. Le site d'étude est alors pris comme point d'injection et l'ellipse de diffusion représente
+    la zone qui va influencer le point d'injection. C'est le contact avec l'un des polygones des points de
+    surverse qui est utilisé dans <a href="03-02-Onglet Graphe.htm">l'onglet Graphes</a>.
+    En fait, vu la largeur du site d'étude, ce sont 5 points d'injection qui ont été considérés.</p>
+   
+    <h3><a id="Curseurs sur les données">Les curseurs sur les données</a></h3>
+    <p>
+    Tant les tracés que les ellipses peuvent être interrogés avec la souris. Pour ceci, les curseurs
+    sur les données doivent être activés dans la boite de dialogue des
+    <a href="01-02-Menu Paramètres.htm#GestionDeTracé">Paramètres d’affichage des tracés</a>
+    </p>
+    <p>
+    Les curseurs permettent d'obtenir de l'information sur les tracés à l'endroit du curseur. Ils sont activés
+    par un clic-gauche de la souris et affichent les informations dans une bulle. Cette bulle est effacée
+    par un clic-droit de la souris.
+    </p>
 
-  </body>
+    <table>
+    <tbody>
+    <tr>
+    <td><img src="images/warning.png" alt="Warning" width="70" height="70" hspace="12" /></td>
+    <td>Attention: une bulle est créée pour <b>chacun</b> des tracés sous la souris.
+    Afin d’éviter une surcharge du système graphique, l’affichage des bulles est désactivé
+    s’il y a plus de 20 tracés d’actifs.</td>
+    </tr>
+    </tbody>
+    </table>
+   
+    <p>Actions possibles&nbsp;:</p>
+    <ul>
+    <li>Click gauche : Affiche dans une bulle les valeurs à l’endroit de la souris;</li>
+    <li>Click droit dans une bulle : efface la bulle;</li>
+    <li>Clavier « e » : Active/Désactive l’affichage des curseurs;</li>
+    <li>Clavier « v » : Active/Désactive la visibilité des curseurs;</li>
+    <li>Il est possible de déplacer une bulle par cliqué/déplacé.</li>
+    </ul>
+    
+    </body>
 </html>
