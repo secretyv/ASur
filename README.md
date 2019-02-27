@@ -10,6 +10,7 @@ Installer:
 
 Dans une fenêtre de commande **conda**:
 
+- `conda update --all`
 - `conda install cython numpy`
 - `conda install wxpython matplotlib pytimeparse gdal pillow pyshp scipy`
 - `conda install -c conda-forge mplcursors`
@@ -23,6 +24,6 @@ Cloner les logiciels via **tortoise-git** ou par la fenêtre de commande:
 Dans une fenêtre de commande **conda**:
 
 - `cd` *repertoire_de_travail*
+- `set INRS_DEV=`*repertoire_de_travail*
 - `cd Asur`
 - `all.bat`
-- `install.bat`
