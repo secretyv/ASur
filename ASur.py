@@ -615,8 +615,8 @@ class ASur(wx.Frame):
                         dtmax = max(dtmax, dtmax_)
                     self.pnl_asur.plotZoom(self.bbModels[0], dtaGlb, dtini, dtfin, dtmax, title='Différentes marées - Différentes dilutions')
             except Exception as e:
-                errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-                #errMsg = '%s' % str(e)
+                self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                errMsg = str(e)
             finally:
                 wx.EndBusyCursor()
 
@@ -725,7 +725,8 @@ class ASur(wx.Frame):
 
             self.__set_state(GlbStates.data_loaded, BtnStates.on)
         except Exception as e:
-            errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+            self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+            errMsg = str(e)
         finally:
             wx.EndBusyCursor()
 
@@ -781,7 +782,8 @@ class ASur(wx.Frame):
                     else:
                         errMsg = "%s ne comprend aucun répertoire de données valide" % dirname
                 except Exception as e:
-                    errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+                    self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                    errMsg = str(e)
                 finally:
                     wx.EndBusyCursor()
             else:
@@ -804,7 +806,8 @@ class ASur(wx.Frame):
                     self.__fillPoints()
                     self.__fillModelMenu()
                 except Exception as e:
-                    errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+                    self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                    errMsg = str(e)
                 finally:
                     wx.EndBusyCursor()
             else:
@@ -827,7 +830,8 @@ class ASur(wx.Frame):
                 self.__fillModelMenu()
             except Exception as e:
                 self.history.RemoveFileFromHistory(fileNum)
-                errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+                self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                errMsg = str(e)
             finally:
                 wx.EndBusyCursor()
         else:
@@ -856,7 +860,8 @@ class ASur(wx.Frame):
                 if not self.bbModels:
                     self.__set_state(GlbStates.started, BtnStates.off)
             except Exception as e:
-                errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+                self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                errMsg = str(e)
             finally:
                 wx.EndBusyCursor()
         else:
@@ -1073,7 +1078,7 @@ class ASur(wx.Frame):
             s = ' : '.join(s)
             self.statusbar.SetStatusText('Position: %s' % s, 1)
         except Exception as e:
-            print(str(e))
+            self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
             pass
 
 """
