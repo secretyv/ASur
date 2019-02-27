@@ -602,10 +602,8 @@ class ASPanelPathPlot(ASPanelWxMPL):
         XY = np.column_stack((X,Y)).reshape(-1,1,2)
         ZIP = list(zip(XY,E))
         if f <= 0:
-            idxs = list(range(len(C))[::-1])
             ells = [ mpl.patches.Ellipse(xy[0], width=2*e[0], height=2*e[1], angle=math.degrees(e[2])) for xy, e in ZIP[-1:] ]
         else:
-            idxs = list(range(len(C))[::f])
             ells = [ mpl.patches.Ellipse(xy[0], width=2*e[0], height=2*e[1], angle=math.degrees(e[2])) for xy, e in ZIP[::f] ]
         label = kwargs.pop('label', '')
         label = '%s; step: %s' % (label, f)
