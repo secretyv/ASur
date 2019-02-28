@@ -14,12 +14,14 @@ def findFileInPath(f):
 
 block_cipher = None
 
-ROOTDIR = r'E:\Projets_simulation\VilleDeQuebec\Beauport\ASur'
+ROOTDIR = SPECPATH
 
-ASCmp = ['tide', 'river', 'station', 'overflow', 'asplume', 'asclass', 'asapi', '__init__']
-ASModel_hiddenimports = [
-    'ASModel.'+c for c in ASCmp[:-1]
-    ]
+ASModel_path = [
+   os.path.join(ROOTDIR, 'ASModel'),
+   os.path.join(os.environ['INRS_DEV'], 'H2D2-tools', 'script'),
+   ]
+ASCmp = ('tide', 'river', 'station', 'overflow', 'asplume', 'asclass', 'asapi', '__init__')
+ASModel_hiddenimports = ['ASModel.'+c for c in ASCmp[:-1] ]
 ASModel_binaries = [
     ]
 ASModel_data = [
@@ -41,15 +43,21 @@ python_hiddenimports = [
     # 'gdalarray',
     'pytimeparse',
     ]
+python_excludes = [
+    'PyQt4',
+    'PyQt5',
+    'FixTk',
+    'tkinter',
+    ]
 
 pb2_a = Analysis(['ASur.py'],
-                 pathex  = [os.path.join(ROOTDIR, 'ASModel')],
+                 pathex         = ASModel_path,
                  binaries       = ASModel_binaries,
                  datas          = ASModel_data,
                  hiddenimports  = ASModel_hiddenimports + python_hiddenimports,
                  hookspath      = [],
                  runtime_hooks  = [],
-                 excludes       = [],
+                 excludes       = python_excludes,
                  win_no_prefer_redirects=False,
                  win_private_assemblies =False,
                  cipher=block_cipher)

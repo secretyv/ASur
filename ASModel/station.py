@@ -3,6 +3,7 @@
 #************************************************************************
 # --- Copyright (c) INRS 2016
 # --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -79,7 +80,7 @@ class OverflowPointOneTide(object):
         self.m_river    = river
         self.m_dist2SL  = dist
         self.m_dataDir  = ''
-        self.m_pathDir  = ''
+        self.m_pathDirs = []
         self.m_dt       = -1.0    # Tide cycle duration
         self.m_dh       =  0.0    # Tide height
         self.m_tideDta  = {}      # Dic of { ix : (iy, a) }
@@ -102,15 +103,15 @@ class OverflowPointOneTide(object):
         return '%s: at %s' % ('OverflowPointOneTide', self.getId())
 
     def getTideData(self):
-        return self.m_dt, self.m_dh, self.m_tideDta, self.m_pathDta, self.m_dataDir, self.m_pathDir, self.m_dilution
+        return self.m_dt, self.m_dh, self.m_tideDta, self.m_pathDta, self.m_dataDir, self.m_pathDirs, self.m_dilution
 
-    def setTideData(self, dt, dh, tDta={}, pDta={}, dtaDir='', pthDir='', dil=-1.0):
+    def setTideData(self, dt, dh, tDta={}, pDta={}, dtaDir='', pthDir=[], dil=-1.0):
         self.m_dt = dt
         self.m_dh = dh
         self.m_tideDta = tDta
         self.m_pathDta = pDta
         self.m_dataDir = dtaDir
-        self.m_pathDir = pthDir
+        self.m_pathDirs= pthDir
         self.m_dilution= dil
 
     def getId(self):
@@ -119,7 +120,7 @@ class OverflowPointOneTide(object):
     def mergeTideData(self, other):
         """
         Merge tide data from other with self,
-        if data doesnot exist in self
+        if data doesn't exist in self
         or if amplitude of other is bigger
         """
         # ---  Loop on other ix's
@@ -147,10 +148,11 @@ class OverflowPointOneTide(object):
     def mergePathData(self, other):
         """
         Merge tide data from other with self,
-        if data doesnot exist in self
-        or if amplitude of other in bigger
+        if data doesn't exist in self
+        or if other in direct
         """
         # ---  Loop on other ix's
+        modif = False
         for ix in other.m_pathDta:
             try:
                 oDta = other.m_pathDta[ix]
@@ -162,13 +164,20 @@ class OverflowPointOneTide(object):
                     if idxs:
                         assert len(idxs) == 1
                         idx = idxs[0]
-                        assert md5 == sDta[idx][1]
+                        if dd and not sDta[idx][2]:
+                            sDta[idx] = (iy, md5, dd)
+                            modif = True
                     else:
                         sDta.append( (iy, md5, dd) )
+                        modif = True
                 # ---  Keep things sorted on iy
                 sDta.sort(key=lambda x: x[0])
             except KeyError:
-                self.m_pathDta = other.m_pathDta
+                self.m_pathDta[ix] = other.m_pathDta[ix]
+                modif = True
+        for p in other.m_pathDirs:
+            if p not in self.m_pathDirs:
+                self.m_pathDirs.append(p)
 
     def __getRiverTransitTime(self):
         return self.m_river.getTransitTimes(self.m_dist2SL) if self.m_river else [0.0]
@@ -307,12 +316,15 @@ class OverflowPointOneTide(object):
     def getPath(self, ix, iy):
         iy, md5, dd = self.__getSinglePathData(ix, iy)
         fname = 'path-%s.pkl' % (md5)
-        fname = os.path.join(self.m_pathDir, fname)
         pth = None
-        if not os.path.isfile(fname):
-            LOGGER.warning('Path file not found: %s', fname)
-        else:
-            with open(fname, 'rb') as f: pth = pickle.load(f, encoding='bytes')
+        for p in self.m_pathDirs:
+            fullPath = os.path.join(p, fname)
+            if os.path.isfile(fullPath):
+                with open(fullPath, 'rb') as f: pth = pickle.load(f, encoding='bytes')
+        if not pth:
+            LOGGER.warning('Path file "%s" not found in:', fname)
+            for p in self.m_pathDirs:
+                LOGGER.warning('   %s', p)
         return pth
 
     def dump(self):
@@ -338,8 +350,8 @@ class OverflowPointOneTide(object):
         self.m_pathDta = {}
         for i, j, md5, dd in data:
             self.m_pathDta.setdefault(i, [])
-            self.m_pathDta[i].append( (j,md5,dd) )
-        self.m_pathDir = pathDir
+            self.m_pathDta[i].append( (j,md5,bool(dd)) )
+        self.m_pathDirs = [pathDir]
         self.m_dilution = dilution
         LOGGER.trace('OverflowPointOneTide.loadPath: dt=%s dh=%s self=%s' % (self.m_dt, self.m_dh, self))
 
@@ -351,9 +363,15 @@ class OverflowPointOneTide(object):
         for ix,dta in self.m_pathDta.items():
             for iy,md5,dd in dta:
                 fname = 'path-%s.pkl' % (md5)
-                fname = os.path.join(self.m_pathDir, fname)
-                if not os.path.isfile(fname):
-                    LOGGER.warning('Path file not found: %s', fname)
+                found = False
+                for p in self.m_pathDirs:
+                    fullPath = os.path.join(p, fname)
+                    if os.path.isfile(fullPath):
+                        found = True
+                if not found:
+                    LOGGER.warning('Path file "%s" not found in:', fname)
+                    for p in self.m_pathDirs:
+                        LOGGER.warning('   %s', p)
 
     def checkInclusion(self, other):
         """
@@ -452,7 +470,10 @@ class OverflowPoint:
         if not tide_cycles:
             cycles = self.m_tideRsp
         else:
-            cycles = [ self.getTideResponse(ii) for ii in tide_cycles]
+            # Cython chokes at a single expression
+            # Rewrite as 2 expressions
+            cycles = [ self.getTideResponse(ii) for ii in tide_cycles ]
+            cycles = [ r for r in cycles if r ]
         LOGGER.trace('OverFlowPoint.getHitsForSpillWindow(): cycles[%d]', len(cycles))
         for tideRsp in cycles:
             LOGGER.trace('   %s', tideRsp)
@@ -486,8 +507,8 @@ class OverflowPoint:
             ]
         """
         LOGGER.trace('OverflowPoint.doPlumes from %s to %s', t_start, t_end)
-        hits = self.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, tide_cycles, merge_transit_times=True)
-        assert len(hits) == 1
+        hitss = self.getHitsForSpillWindow(t_start, t_end, dt, tide_tbl, tide_cycles, merge_transit_times=True)
+        assert len(hitss) in [0, 1]
 
         # ---
         md5s = []
@@ -496,22 +517,24 @@ class OverflowPoint:
             res.append( ASPlume(name=self.m_root.m_name, poly=self.m_root.m_poly) )
         except Exception as e:
             pass
-        for hit in hits[0]:
-            if hit and hit.md5 not in md5s:
-                md5s.append(hit.md5)
-                ptd = hit.pnt
-                ptdTideData = ptd.getTideData()
-                kwargs = {}
-                kwargs['dilution'] = ptdTideData[-1]
-                kwargs['name'] = self.m_parent.m_name if self.m_parent else self.m_name
-                kwargs['poly'] = self.m_parent.m_poly if self.m_parent else self.m_poly
-                kwargs['tide'] = ptdTideData[:2]
-                kwargs['t0']   = hit.t0
-                kwargs['tc']   = hit.tc
-                #kwargs['dt']   = -1.0
-                kwargs['isDirect']= hit.dd
-                kwargs['plume']   = ptd.getPath(hit.ix, hit.iy)
-                res.append( ASPlume(**kwargs) )
+        for hits in hitss:
+            for hit in hits:
+                if hit and hit.md5 not in md5s:
+                    md5s.append(hit.md5)
+                    ptd = hit.pnt
+                    ptdTideData = ptd.getTideData()
+                    kwargs = {}
+                    kwargs['dilution'] = ptdTideData[-1]
+                    kwargs['name']   = self.m_name
+                    kwargs['parent'] = self.m_parent.m_name if self.m_parent else self.m_name
+                    kwargs['poly']   = self.m_parent.m_poly if self.m_parent else self.m_poly
+                    kwargs['tide']   = ptdTideData[:2]
+                    kwargs['t0']     = hit.t0
+                    kwargs['tc']     = hit.tc
+                    #kwargs['dt']   = -1.0
+                    kwargs['isDirect']= hit.dd
+                    kwargs['plume']   = ptd.getPath(hit.ix, hit.iy)
+                    res.append( ASPlume(**kwargs) )
 
         LOGGER.trace('OverflowPoint.doPlumes done')
         return res
@@ -659,11 +682,13 @@ class OverflowPoint:
         Debug Code
         Check the presence of the path files
         """
-        try:
-            self.m_parent.m_name
-        except AttributeError:
-            for m in self.m_tideRsp:
-                m.checkPathFiles()
+        for m in self.m_tideRsp:
+            m.checkPathFiles()
+        # try:
+        #     self.m_parent.m_name
+        # except AttributeError:
+        #     for m in self.m_tideRsp:
+        #         m.checkPathFiles()
 
     def __getTideResponse(self, td, th):
         """
@@ -903,13 +928,13 @@ if __name__ == '__main__':
 
         LOGGER = logging.getLogger("INRS.ASModel.station")
         LOGGER.addHandler(logHndlr)
-        LOGGER.setLevel(logging.TRACE)
+        LOGGER.setLevel(logging.DEBUG)
 
-        fpath  = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v1812rc1\data.lim=1.0e-06'
+        fpath  = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v1812\data.lim=1.0e-06'
         tides  = loadTides (fpath)
         rivers = loadRivers(fpath)
         points = loadPoints(fpath, rivers)
-        #points.checkPathFiles()
+        points.checkPathFiles()
 
         ##fpath   = r'E:\Projets_simulation\VilleDeQuebec\Beauport\BBData_v1812rc1\data.lim=1.0e-03'
         ##tides2  = loadTides (fpath)
@@ -917,15 +942,15 @@ if __name__ == '__main__':
         ##points2 = loadPoints(fpath, rivers2)
         ##points.checkInclusion(points2)
 
-        t0 = datetime.datetime.now(tz=pytz.utc).replace(day=12,hour=20,minute=00,second=0,microsecond=0)
+        t0 = datetime.datetime.now(tz=pytz.utc).replace(month=2,day=11,hour=10,minute=55,second=0,microsecond=0)
         t0 = t0 + datetime.timedelta(hours=0, minutes= 0)
-        t1 = t0 + datetime.timedelta(hours=2, minutes= 0)
+        t1 = t0 + datetime.timedelta(hours=0, minutes= 0)
         dt = datetime.timedelta(seconds=30*60)
         print('t0: ', t0)
         print('t1: ', t1)
 
         dtmax = t0
-        for p in ['BBE-STL-003']: # points.getNames():
+        for p in ['SAN-SCH-002']: # points.getNames():
             cycles = points[p].getTides()[-2:-1]
             print('Overflow point:', points[p])
 

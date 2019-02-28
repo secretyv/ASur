@@ -20,10 +20,16 @@
 #
 
 import os
+import sys
 
 import wx
 
 from ASGlobalParameters import ASGlobalParameters
+
+if getattr(sys, 'frozen', False):
+    ROOT_DIR = sys._MEIPASS
+else:
+    ROOT_DIR = os.path.dirname(__file__)
 
 class ASDlgItem(wx.Control):
     def __init__(self, *args, **kwds):
@@ -70,6 +76,7 @@ class ASDlgItemFile(ASDlgItem):
         title = kwds.pop('title', 'Title shall be provided')
         value = kwds.pop('value', '')
         patrn = kwds.pop('pattern', '')
+        folder= kwds.pop('folder', '')
         super(ASDlgItemFile, self).__init__(*args, **kwds)
 
         self.txtItem = wx.TextCtrl(self, wx.ID_ANY, "")
@@ -80,6 +87,7 @@ class ASDlgItemFile(ASDlgItem):
 
         self.Bind(wx.EVT_BUTTON, self.onBtnItem, self.btnItem)
 
+        self.fldr = folder    
         self.wcrd = '|'.join( (patrn, "All files (*.*)|*.*") )
         self.txtItem.SetValue(value)
 
@@ -96,7 +104,8 @@ class ASDlgItemFile(ASDlgItem):
         self.Layout()
 
     def onBtnItem(self, event):
-        dlg = wx.FileDialog(self, "Select file", "", "", self.wcrd, wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        defaultDir = os.path.join(ROOT_DIR, self.fldr)
+        dlg = wx.FileDialog(self, "Select file", defaultDir, "", self.wcrd, wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         if dlg.ShowModal() == wx.ID_OK:
             filenames = dlg.GetFilenames()
             dirname   = dlg.GetDirectory()
@@ -174,9 +183,9 @@ class ASDlgParamGlobal(wx.Dialog):
 
         self.items = []
         self.items.append( ASDlgItemText(self, title="Zone d'étude (WGS84)",value='(0,0,1,1)') )
-        self.items.append( ASDlgItemFile(self, title="Fond de carte",       value='Missing', pattern="GeoTIFF files(*.tif)|*.tif") )
-        self.items.append( ASDlgItemFile(self, title="Ligne de berge",      value='Missing', pattern="Shape files (*.shp)|*.shp") )
-        self.items.append( ASDlgItemFile(self, title="Idiome des stations", value='Missing', pattern="Asur Translation Files (*.atf)|*.atf") )
+        self.items.append( ASDlgItemFile(self, title="Fond de carte",       value='Missing', pattern="GeoTIFF files(*.tif)|*.tif", folder='background') )
+        self.items.append( ASDlgItemFile(self, title="Ligne de berge",      value='Missing', pattern="Shape files (*.shp)|*.shp", folder='background') )
+        self.items.append( ASDlgItemFile(self, title="Idiome des stations", value='Missing', pattern="Asur Translation Files (*.atf)|*.atf", folder='traduction') )
         
         self.btnOK     = wx.Button(self, wx.ID_OK, "")
         self.btnCancel = wx.Button(self, wx.ID_CANCEL, "")
@@ -213,7 +222,7 @@ class ASDlgParamGlobal(wx.Dialog):
         event.Skip()
 
     def onBtnCancel(self, event):
-        self.Destroy()
+        event.Skip()
 
     def getParameters(self):
         prm = ASGlobalParameters()

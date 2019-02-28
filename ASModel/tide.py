@@ -3,6 +3,7 @@
 #************************************************************************
 # --- Copyright (c) INRS 2016
 # --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -34,10 +35,10 @@ import time
 import warnings
 import requests
 import pytz
-import dateutil.parser
 
 # Obscur bug in dateutil.parser
 # http://stackoverflow.com/questions/21296475/python-dateutil-str-warning
+# import dateutil.parser
 warnings.filterwarnings("ignore", category=UnicodeWarning)
 
 LOGGER = logging.getLogger("INRS.ASModel.tide")
@@ -45,6 +46,58 @@ LOGGER = logging.getLogger("INRS.ASModel.tide")
 def nint(d):
     return int(d + 0.5)
 
+"""
+dateutil.parser if very slow
+
+As an alternative, use a regex that may not cover all the cases,
+but is significantly faster
+"""
+try:
+    fromisoformat = datetime.datetime.fromisoformat
+except:
+    # https://hg.mozilla.org/comm-central/rev/031732472726
+    # https://tools.ietf.org/html/rfc3339
+    import re
+    RFC3999_DY = r"(?P<DY>[1-2][0-9]{3})"
+    RFC3999_DM = r"(?P<DM>0[1-9]|1[0-2])"
+    RFC3999_DD = r"(?P<DD>0[1-9]|[12][0-9]|3[01])"
+    RFC3999_HH = r"(?P<HH>[01][0-9]|2[0-3])"
+    RFC3999_HM = r"(?P<HM>[0-5][0-9])"
+    RFC3999_HS = r"(?P<HS>[0-5][0-9]|60)(?P<ss>\.[0-9]+)?"
+    RFC3999_Zs = r"(?P<Zs>[+-])"
+    RFC3999_ZH = r"(?P<ZH>[01][0-9]|2[0-3])"    # = RFC3999_HH
+    RFC3999_ZM = r"(?P<ZM>[0-5][0-9])"          # = RFC3999_HM
+
+    RFC3999_FD = "%s-%s-%s" % (RFC3999_DY, RFC3999_DM, RFC3999_DD)
+    RFC3999_FT = "%s:%s:%s" % (RFC3999_HH, RFC3999_HM, RFC3999_HS)
+    RFC3999_OF = r"[Zz]|(%s%s:%s)" % (RFC3999_Zs, RFC3999_ZH, RFC3999_ZM)
+    RFC3999_RE = re.compile("^%s([Tt\ ]%s)?(%s)?$" % (RFC3999_FD, RFC3999_FT, RFC3999_OF))
+
+    def fromisoformat(date_string):
+        """
+        Return a datetime corresponding to a date_string
+        in the formats emitted by datetime.isoformat().
+        datetime is in UTC.
+        datetime.datetime.fromisoformat will appear in python 3.7
+        """
+        res = RFC3999_RE.match(date_string)
+        if res:
+            DY = int(res['DY'])
+            DM = int(res['DM'])
+            DD = int(res['DD'])
+            HH = int(res['HH']) if res['HH'] else 0
+            HM = int(res['HM']) if res['HM'] else 0
+            HS = int(res['HS']) if res['HS'] else 0
+            ss = int(float(res['ss'])*1000) if res['ss'] else 0
+            Zs = -1 if res['Zs'] == '-' else 1
+            ZH = int(res['ZH']) if res['ZH'] else 0
+            ZM = int(res['ZM']) if res['ZM'] else 0
+            dt = datetime.datetime(DY, DM, DD, HH, HM, HS, ss, datetime.timezone.utc)
+            ds = datetime.timedelta(hours=ZH, minutes=ZM)
+            return dt + Zs*ds
+        else:
+            raise ValueError("Not a valid iso date: %s" % date_string)
+        
 class TideRecord:
     """
     A TideRecord is either a HW or LW time stamp.
@@ -57,7 +110,10 @@ class TideRecord:
         return hash((self.dt, self.wl))
     
     def __lt__(self, other):
-        return str(self.dt) < str(other.dt)
+        # La version complète n'est pas compatible avec par exemple getNextHW.
+        # Il ne trouve plus la HW suivante mais retourne l'identique.
+        # return (self.dt < other.dt) or (self.dt == other.dt and self.wl < other.wl)
+        return (self.dt < other.dt)
 
     def __eq__(self, other):
         return self.dt == other.dt and self.wl == other.wl
@@ -71,9 +127,14 @@ class TideRecord:
     def dump(self):
         return '%s; %f' % (self.dt.isoformat(), self.wl)
 
+    # def load_parser(self, l):
+    #     dt, wl = l.split(';')
+    #     self.dt = dateutil.parser.parse(dt)
+    #     self.wl = float(wl)
+        
     def load(self, l):
         dt, wl = l.split(';')
-        self.dt = dateutil.parser.parse(dt)
+        self.dt = fromisoformat(dt)
         self.wl = float(wl)
 
 class TideTable:
@@ -92,6 +153,21 @@ class TideTable:
         f = codecs.open(fname, "w", encoding="utf-8")
         for r in self.tbl:
             f.write('%s\n' % r.dump())
+
+    # def load_parser(self, dataDir):
+    #     uniquer = set()
+    #     ptrn = os.path.join(dataDir, 'tide_3248*.txt')
+    #     for fname in glob.glob(ptrn):
+    #         LOGGER.debug('Read tide file %s', fname)
+    #         f = codecs.open(fname, "r", encoding="utf-8")
+    #         for l in f.readlines():
+    #             l = l.strip()
+    #             if l[0] == '#': continue
+    #             r = TideRecord()
+    #             r.load(l)
+    #             uniquer.add(r)
+    #     self.tbl.extend( sorted(uniquer) )
+    #     LOGGER.debug('Tide table loaded, size = %i', len(self.tbl))
 
     def load(self, dataDir):
         uniquer = set()
@@ -243,14 +319,45 @@ class TideTable:
 
 
 if __name__ == '__main__':
-    logHndlr = logging.StreamHandler()
-    FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logHndlr.setFormatter( logging.Formatter(FORMAT) )
+    def main():
+        # import cProfile as profile
+        logHndlr = logging.StreamHandler()
+        FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
-    #LOGGER = logging.getLogger("INRS.ASModel.tide")
-    LOGGER.addHandler(logHndlr)
-    LOGGER.setLevel(logging.DEBUG)
+        #LOGGER = logging.getLogger("INRS.ASModel.tide")
+        LOGGER.addHandler(logHndlr)
+        LOGGER.setLevel(logging.DEBUG)
 
-    dirname = r'E:\Projets_simulation\VilleDeQuebec\Beauport\Simulation\PIO\BBData_v1812\data.lim=1.0e-03'
-    tbl = TideTable()
-    tbl1 = tbl.load(dirname)
+        dirname = r'E:\Projets\VilleDeQuébec\Asur2\BBData_v1812\data.lim=1.0e-03'
+
+        # tbl_pr = TideTable()
+        # profile.runctx("tbl_pr.load_parser(dirname)", globals(), locals())
+        # tbl_re = TideTable()
+        # profile.runctx("tbl_re.load(dirname)", globals(), locals())
+        # print("Comparing load and load_parser")
+        # for t0, t1 in zip(tbl_re.tbl, tbl_pr.tbl):
+        #     assert(t0 == t1)
+
+        tbl = TideTable()
+        tbl.load(dirname)
+
+    def test():
+        ts = [
+        "0987-13-40 24:12:61Z",
+        "1987-13-40 24:12:61Z",
+        "1987-12-40 24:12:61Z",
+        "1987-12-31 24:12:61Z",
+        "1987-12-31T23:12:60Z",
+        "1987-12-31T23:12:59+",
+        "1987-12-31T23:12:59+24",
+        "1987-12-31T23:12:59+24:60",
+        "1987-12-31T23:12:59+23:59",
+        ]
+        for t in ts:
+            try:
+                print("%s ==> %s" % (t, fromisoformat(t).isoformat()))
+            except Exception as e:
+                print("Invalid date: %s" % t, str(e))
+
+    main()

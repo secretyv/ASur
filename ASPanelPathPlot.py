@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #************************************************************************
-# --- Copyright (c) INRS 2018
+# --- Copyright (c) Yves Secretan 2018
 # --- Institut National de la Recherche Scientifique (INRS)
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@
 if __name__ == "__main__":
     import os
     import sys
-    supPath = r'E:\bld-1810\H2D2-tools\script'
+    supPath = os.path.join( os.environ['INRS_DEV'], 'H2D2-tools', 'script')
     if os.path.isdir(supPath) and supPath not in sys.path: sys.path.append(supPath)
 
 import datetime
@@ -36,8 +36,7 @@ import traceback
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-# from mpl_toolkits.axes_grid1.inset_locator import inset_axes as inax
-import mpldatacursor
+import mplcursors
 from osgeo import ogr
 import wx
 
@@ -48,56 +47,74 @@ from CTCommon import CTUtil
 from IPImageProcessor.GDAL import GDLBasemap
 
 from ASPathParameters import ASPathParameters, CLR_SRC
-from ASEvents         import ASEventMotion
+from ASEvents         import ASEventMotion, ASEventMessage
 
-try:
-    import addLogLevel
-    addLogLevel.addLoggingLevel('TRACE', logging.DEBUG - 5)
-except AttributeError:
-    pass
-LOGGER = logging.getLogger("INRS.ASur.panel.path")
-
+LOGGER = logging.getLogger("INRS.ASur.panel.path.plot")
 FONT_SIZE  = 8
 
-class ASDataCursor(mpldatacursor.DataCursor):
-    def __init__(self, *args, **kwargs):
-        super(ASDataCursor, self).__init__(*args, **kwargs)
+class ASDataCursor:
+    """
+    Encapsulate a mplcursors.Cursor.
+    The mplcursors.Cursor will be constructed on activate() and
+    removed on deactivate()
+    """
+    def __init__(self, layer, CS, formatter=None, xytext=(5,5)):
+        self.layer  = layer
+        self.CS     = CS
+        self.fmtr   = formatter
+        self.xytext = xytext
+        self.cursor = None
 
     def __del__(self):
-        self.disconnect()
-
-    def disconnect(self):
-        self.disable()
-        for fig in self.figures:
-            try:
-                fig._mpldatacursors.remove(self)
-            except:
-                pass
-
-    def _select(self, event):
         try:
-            mpldatacursor.DataCursor._select(self, event)
-        except:
+            self.deactivate()
+        except RuntimeError:    # canvas might be allready dead
             pass
 
+    def activate(self):
+        if not self.cursor:
+            self.cursor = mplcursors.Cursor([self.CS])
+        if self.fmtr:
+            self.cursor.connect("add", self.fmtr)
 
-## class ASPanelPathWeb(wx.Panel):
-##     def __init__(self, *args, **kwargs):
-##         super(ASPanelPathPlot, self).__init__(*args, **kwargs)
-##
-##         self.browser = wx.html2.WebView.New(self)
-##
-##         self.__do_layout()
-##
-##         self.browser.LoadURL('http://www.google.ca')
-##
-##     def __do_layout(self):
-##         szr_main = wx.BoxSizer(wx.HORIZONTAL)
-##         szr_main.Add(self.browser, 1, wx.EXPAND, 0)
-##         self.SetSizer(szr_main)
-##         self.Layout()
-##     def resetToolbar(self):
-##         pass
+    def deactivate(self):
+        if self.cursor:
+            self.cursor.remove()
+            self.cursor = None
+
+class ASLayer:
+    """
+    A display layer, associated with a plume, and containing the
+    matplotlib artists for plume and ellipses.
+    """
+    def __init__(self, plume):
+        self.plume  = plume
+        self.visible= True
+        self.CSS    = []
+
+    def __lt__(self, other):
+        return self.plume < other.plume
+
+    def __iter__(self):
+        return self.CSS.__iter__()
+
+    def __getitem__(self, i):
+        return self.CSS[i]
+
+    def __len__(self):
+        return len(self.CSS)
+
+    def append(self, cs):
+        return self.CSS.append(cs)
+
+    def remove(self, cs):
+        return self.CSS.remove(cs)
+
+    def isVisible(self):
+        return self.visible
+
+    def setVisible(self, v):
+        self.visible = v
 
 class ASPanelPathPlot(ASPanelWxMPL):
     DPI = 96
@@ -134,10 +151,11 @@ class ASPanelPathPlot(ASPanelWxMPL):
     ]
     """                             # Project Spatial Reference System
 
+    DATA_CURSOR_NMAX = 20
+
     def __init__(self, *args, **kwargs):
         super(ASPanelPathPlot, self).__init__(*args, **kwargs)
 
-        self.CSS  = []
         self.cbar = None
 
         self.projBbox = None
@@ -150,25 +168,40 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.axes     = None
         self.bgMapFil = ''
         self.bgMapImg = None
-        self.bgMapCS  = None
         self.bgShrFil = ''
         self.bgShrPly = None
-        self.bgShrCS  = None
         self.threads  = {}  # {thread: doRun}
         self.lock     = threading.Lock()
         self.dataCursors = []
 
-        self.plumes = []
+        self.bgMapCS  = None    # Background CS
+        self.bgShrCS  = None
+        self.layers   = []      # main CS
+        self.olPlgCS  = None    # Overlay
+        self.nVisible = -1      # number of visible layers
+
         self.params = ASPathParameters()
 
         self.SetSize((200, 200))
 
         self.Bind(wx.EVT_SIZE, self.onResize)
+        #self.Bind(wx.EVT_LEFT_UP, self.on_mouse_lup)
+        self.canvas.mpl_connect('button_press_event',  self.on_mouse_click)
 
-        self.window = self.bbox
+        bb = self.bbox.bounds
+        self.window = (bb[0], bb[1], bb[0]+bb[2], bb[1]+bb[3])
 
         self.__setAxes()
         self.__setSrsProj()
+
+    def on_mouse_click(self, evt):
+        """
+        If to many data cursor, send message event
+        """
+        LOGGER.trace("ASPanelPathPlot.on_mouse_click: nVisible (%d/%d)", self.nVisible, ASPanelPathPlot.DATA_CURSOR_NMAX)
+        if self.nVisible > ASPanelPathPlot.DATA_CURSOR_NMAX:
+            msg = "Curseurs désactivés: trop de tracés (%d/%d)" % (self.nVisible, ASPanelPathPlot.DATA_CURSOR_NMAX)
+            wx.PostEvent(self, ASEventMessage(self.GetId(), text=msg, timeout=1.5))
 
     def on_mouse_move(self, evt):
         """
@@ -180,26 +213,11 @@ class ASPanelPathPlot(ASPanelWxMPL):
         x, y, z = self.proj2wgs.TransformPoint(x, y)
         wx.PostEvent(self, ASEventMotion(self.GetId(), ll=(x, y)))
 
-    ## def __add_one_item(self, cs):
-    ##     if isinstance(cs, mpl.collections.Collection):
-    ##         self.axes.add_collection(cs)
-    ##     elif isinstance(cs, mpl.artist.Artist):
-    ##         self.axes.add_artist(cs)
-    ##     else:
-    ##         raise ValueError('Unhandled type: %s' % type(cs))
-    ##
-    ## def __add_collections(self):
-    ##     for lyr in self.layers:
-    ##         for itm in lyr:
-    ##             if not itm.visible: continue
-    ##             if isinstance( itm.cs, (list,tuple) ):
-    ##                 for c in itm.cs: self.__add_one_item(c)
-    ##             elif hasattr(itm.cs, 'collections'):
-    ##                 for c in itm.cs.collections: self.__add_one_item(c)
-    ##             else:
-    ##                 self.__add_one_item(itm.cs)
-
     def __drawBgndMap(self):
+        """
+        Draw the background map. 
+        The image must exist.
+        """
         LOGGER.trace('ASPanelPathPlot.__drawBgndMap %s', self.bgMapImg)
         if not self.bgMapImg: return
 
@@ -217,6 +235,10 @@ class ASPanelPathPlot(ASPanelWxMPL):
                                             alpha=1.0)
 
     def __drawBgndShore(self):
+        """
+        Draw the background shore.
+        The polyline must exist.
+        """
         LOGGER.trace('ASPanelPathPlot.__drawBgndShore')
         if not self.bgShrPly: return
 
@@ -225,6 +247,10 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.bgShrCS = self.axes.add_collection(lc)
 
     def __drawBgnd(self):
+        """
+        Draw the background.
+        Call in turn __drawBgndMap and __drawBgndShore
+        """
         LOGGER.trace('ASPanelPathPlot.__drawBgnd: begin')
         if self.params.doDrawBGMap:     self.__drawBgndMap  ()
         if self.params.doDrawShoreline: self.__drawBgndShore()
@@ -283,39 +309,67 @@ class ASPanelPathPlot(ASPanelWxMPL):
         if self.threads[w]: self.__resizeScreen()
         LOGGER.debug('ASPanelPathPlot.__loadBgnd: after __resizeScreen')
         if self.threads[w]: self.__resizeAxes()
-        LOGGER.debug('ASPanelPathPlot.__loadBgnd: after __resizeScreen')
+        LOGGER.debug('ASPanelPathPlot.__loadBgnd: after __resizeAxes')
         if self.threads[w]: self.__loadBgndMap()
         if self.threads[w]: self.__loadBgndShr()
         LOGGER.debug('ASPanelPathPlot.__loadBgnd: thread: %s', w)
         LOGGER.trace('ASPanelPathPlot.__loadBgnd: end')
 
+    def __append_one_CS(self, cs):
+        if isinstance( cs, (list,tuple) ):
+            for c in cs: self.__append_one_CS(c)
+        elif isinstance(cs, mpl.collections.Collection):
+            self.axes.add_collection(cs)
+        elif hasattr(cs, 'collections'):
+            for c in cs.collections:
+                self.__append_one_CS(c)
+        elif isinstance(cs, mpl.artist.Artist):
+            self.axes.add_artist(cs)
+        else:
+            raise ValueError('Unhandled type: %s' % type(cs))
+
     def __remove_one_CS(self, cs):
         try:
             if isinstance( cs, (list,tuple) ):
-                for c in cs: c.remove()
+                for c in cs:
+                    self.__remove_one_CS(c)
             elif hasattr(cs, 'collections'):
                 for c in cs.collections: c.remove()
             else:
                 cs.remove()
-        except:
+        except Exception as e:
+            errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+            LOGGER.error(errMsg)
             pass
 
     def __remove_all_CS(self):
-        for cs in self.CSS:
-            self.__remove_one_CS(cs)
-        self.CSS = []
-        if self.bgMapCS: 
+        if self.olPlgCS:
+            self.__remove_one_CS(self.olPlgCS)
+            self.olPlgCS = None
+        if self.layers:
+            for layer in self.layers:
+                if layer.isVisible():
+                    for CS in layer.CSS:
+                        self.__remove_one_CS(CS)
+            self.layers = []
+        if self.bgMapCS:
             self.__remove_one_CS(self.bgMapCS)
             self.bgMapCS = None
-        if self.bgShrCS: 
+        if self.bgShrCS:
             self.__remove_one_CS(self.bgShrCS)
             self.bgShrCS = None
 
     def __remove_all_DC_thread(self, dataCursors):
         for dc in reversed(dataCursors):
-            dc.hide().disable()
-            dc.disconnect()
-        
+            # Dans la destruction de la Figure, il peut arriver
+            # les dc soient déjà détruits. D'où le try
+            try:
+                dc.hide().disable()
+                dc.disconnect()
+            except Exception as e:
+                # LOGGER.critical(str(e))
+                pass
+
     def __remove_all_DC(self,):
         if not self.dataCursors: return
 
@@ -329,6 +383,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         worker.start()
 
     def __resizeAxes(self):
+        LOGGER.trace('ASPanelPathPlot.__resizeAxes')
         w = self.screen.getWindow()
         self.axes.set_autoscale_on(False)
         self.axes.update_datalim( ((w[0],w[1]), (w[2],w[3])) )
@@ -337,6 +392,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.axes.set_aspect('equal', 'box', anchor='C')
 
     def __resizeScreen(self):
+        LOGGER.trace('ASPanelPathPlot.__resizeScreen')
         w, h = self.GetSize()
         size = (float(w)/ASPanelPathPlot.DPI, float(h)/ASPanelPathPlot.DPI)
         self.screen = GDLBasemap.IPGeoTransform()
@@ -345,6 +401,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.screen.resizeWindowToViewport()
 
     def __setAxes(self):
+        LOGGER.trace('ASPanelPathPlot.__setAxes')
         fig = self.get_figure()
         ax  = fig.add_subplot(1, 1, 1, aspect='equal')
         fig.subplots_adjust(hspace=0.0, wspace=0.0, bottom=0.0, top=1.0, left=0.0, right=1.0)
@@ -359,50 +416,58 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.proj2wgs = GDLBasemap.IPCoordinateTransformation(self.srs_proj, self.srs_wgs)
         self.wgs2proj = GDLBasemap.IPCoordinateTransformation(self.srs_wgs, self.srs_proj)
 
-    def dataCursorPathFormatter(self, **kwargs):
-        LOGGER.trace('dataCursorPathFormatter: %s', kwargs)
+    def dataCursorPathFormatter(self, selection):
+        LOGGER.trace('dataCursorPathFormatter: %s', selection)
         try:
-            ip = int( kwargs['label'][9:] )
-            inds = kwargs['ind']
-            plume = self.plumes[ip]
+            txt = selection.annotation.get_text()
+            idx = selection.target.index
+
+            lbl = txt.split('\n')[0]
+            ip = eval(lbl.split(':')[-1])
+            jj = idx[0]
+
+            plume = self.layers[ip].plume
             ti = plume.injectionTime.astimezone(LOCAL_TZ)
             t0 = plume.plume[ 0][0]
-            s = []
-            for jj in inds:
-                tx = plume.plume[jj][0]
-                cx = plume.plume[jj][3]
-                dt = datetime.timedelta(seconds=(tx-t0))
-                st0 = 't0={t:s}'.format(t=ti.isoformat())
-                sta = 'ta={t:s}'.format(t=(ti+dt).isoformat())
-                sdh = 'dt={d:s}'.format(d=CTUtil.seconds_to_iso(tx-t0))
-                scm = 'c.max={c:,.3e}'.format(c=cx)
-                s.extend((st0, sta, sdh, scm))
-            return '\n'.join(s)
+            tx = plume.plume[jj][0]
+            cx = plume.plume[jj][3]
+            dt = datetime.timedelta(seconds=(tx-t0))
+            st0 = 't0={t:s}'.format(t=ti.isoformat())
+            sta = 'ta={t:s}'.format(t=(ti+dt).isoformat())
+            sdh = 'dt={d:s}'.format(d=CTUtil.seconds_to_iso(tx-t0))
+            scm = 'c.max={c:,.3e}'.format(c=cx)
+            s = (st0, sta, sdh, scm)
+            selection.annotation.set_text('\n'.join(s))
         except Exception as e:
             errMsg = '%s\n%s' % (str(e), traceback.format_exc())
             LOGGER.error(errMsg)
 
-    def dataCursorEllpsFormatter(self, **kwargs):
-        LOGGER.trace('dataCursorEllpsFormatter: %s', kwargs)
+    def dataCursorEllpsFormatter(self, selection):
+        LOGGER.trace('dataCursorEllpsFormatter: %s', selection)
         try:
-            ip = int( kwargs['label'][9:] )
-            inds = kwargs['ind']
-            plume = self.plumes[ip]
+            txt = selection.annotation.get_text()
+            idx = selection.target.index
+
+            lbl = txt.split('\n')[0]
+            lbl0, lbl1 = lbl.split(';')
+            ip = eval(lbl0.split(':')[-1])
+            st = eval(lbl1.split(':')[-1])
+            jj = idx[0]*st if st >= 0 else -1
+
+            plume = self.layers[ip].plume
             ti = plume.injectionTime.astimezone(LOCAL_TZ)
             cl = plume.dilution
             t0 = plume.plume[0][0]
-            s = []
-            for jj in inds:
-                tx = plume.plume[jj][0]
-                cx = plume.plume[jj][3]
-                dt = datetime.timedelta(seconds=(tx-t0))
-                st0 = 't0={t:s}'.format(t=ti.isoformat())
-                sta = 'ta={t:s}'.format(t=(ti+dt).isoformat())
-                sdh = 'dt={d:s}'.format(d=CTUtil.seconds_to_iso(tx-t0))
-                scm = 'c.max={c:,.3e}'.format(c=cx)
-                scl = 'c.lim={c:,.3e}'.format(c=cl)
-                s.extend((st0, sta, sdh, scm, scl))
-            return '\n'.join(s)
+            tx = plume.plume[jj][0]
+            cx = plume.plume[jj][3]
+            dt = datetime.timedelta(seconds=(tx-t0))
+            st0 = 't0={t:s}'.format(t=ti.isoformat())
+            sta = 'ta={t:s}'.format(t=(ti+dt).isoformat())
+            sdh = 'dt={d:s}'.format(d=CTUtil.seconds_to_iso(tx-t0))
+            scm = 'c.max={c:,.3e}'.format(c=cx)
+            scl = 'c.lim={c:,.3e}'.format(c=cl)
+            s = (st0, sta, sdh, scm, scl)
+            selection.annotation.set_text('\n'.join(s))
         except Exception as e:
             errMsg = '%s\n%s' % (str(e), traceback.format_exc())
             LOGGER.error(errMsg)
@@ -414,6 +479,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.params = prm
 
     def setBackground(self, bbox, fmap, fshr):
+        LOGGER.trace('setBackground')
         llx, lly, llz = self.wgs2proj.TransformPoint(bbox[0], bbox[1])
         hrx, hry, hrz = self.wgs2proj.TransformPoint(bbox[2], bbox[3])
         self.projBbox = bbox
@@ -422,15 +488,9 @@ class ASPanelPathPlot(ASPanelWxMPL):
         self.bgShrFil = fshr
 
     def on_btn_pan(self, enable):
-        fnc = ASDataCursor.enable if enable else ASDataCursor.disable
-        for dc in self.dataCursors:
-            fnc(dc)
         super(ASPanelPathPlot, self).on_btn_pan(enable)
 
     def on_btn_zoom_to_rectangle(self, enable):
-        fnc = ASDataCursor.enable if enable else ASDataCursor.disable
-        for dc in self.dataCursors:
-            fnc(dc)
         super(ASPanelPathPlot, self).on_btn_zoom_to_rectangle(enable)
 
     def onResizeThread(self):
@@ -440,6 +500,8 @@ class ASPanelPathPlot(ASPanelWxMPL):
         w = threading.current_thread()  # Worker
         LOGGER.debug('ASPanelPathPlot.onResizeThread: thread %s', w)
         try:
+            self.bgMapImg = None      # Force reload
+            self.bgMapCS  = None      # Force reload
             if doWork and self.threads[w]: self.__loadBgnd()
             if doWork and self.threads[w]: self.__drawBgnd()
             if doWork and self.threads[w]: self.redraw()
@@ -459,8 +521,6 @@ class ASPanelPathPlot(ASPanelWxMPL):
             # self.thread.join(5.0)
             LOGGER.debug('Thread: %s stopped' % worker)
 
-        self.bgMapImg = None      # Force reload
-        self.bgMapCS  = None      # Force reload
         worker = threading.Thread(target=self.onResizeThread)
         self.threads[worker] = True
         LOGGER.debug('ASPanelPathPlot.onResize: starting %s', worker)
@@ -482,9 +542,9 @@ class ASPanelPathPlot(ASPanelWxMPL):
 
         LABELS = {CLR_SRC.TIME: 'Temps (HH:MM)', CLR_SRC.DILUTION: 'Dilution'}
 
-        if not self.CSS: return
+        if not self.layers: return
         if not self.params.doDrawPath: return
-        
+
         fig = self.get_figure()
         if self.cbar:
             fig.delaxes(self.cbar.ax)
@@ -497,15 +557,15 @@ class ASPanelPathPlot(ASPanelWxMPL):
         kwargs['use_gridspec'] = False # http://matplotlib.1069221.n5.nabble.com/Missing-anchor-for-colorbar-td44594.html
         kwargs['anchor']   = (-0.8, 0.40)
         if self.params.pathColorSource == CLR_SRC.TIME:
-            kwargs['format']   = TimeFormatter()
-            kwargs['ticks']    = [ h*3600 for h in range(8) ]
+            kwargs['format'] = TimeFormatter()
+            kwargs['ticks']  = [ h*3600 for h in range(8) ]
         elif self.params.pathColorSource == CLR_SRC.DILUTION:
-            kwargs['extend']   = 'both'
-            kwargs['format']   = '$10^{%i}$'
-            kwargs['ticks']    = [-6, -5, -4, -3, -2, -1, 0]
+            kwargs['extend'] = 'both'
+            kwargs['format'] = '$10^{%i}$'
+            kwargs['ticks']  = [-6, -5, -4, -3, -2, -1, 0]
         else:
-                raise ValueError('Invalid color source')
-        self.cbar = fig.colorbar(self.CSS[0], **kwargs)
+            raise ValueError('Invalid color source')
+        self.cbar = fig.colorbar(self.layers[0].CSS[0], **kwargs)
 
         kwargs = {}
         kwargs['labelsize'] = FONT_SIZE+1
@@ -545,8 +605,9 @@ class ASPanelPathPlot(ASPanelWxMPL):
             ells = [ mpl.patches.Ellipse(xy[0], width=2*e[0], height=2*e[1], angle=math.degrees(e[2])) for xy, e in ZIP[-1:] ]
         else:
             ells = [ mpl.patches.Ellipse(xy[0], width=2*e[0], height=2*e[1], angle=math.degrees(e[2])) for xy, e in ZIP[::f] ]
-        LOGGER.trace('__drawOneEllipses: size=%d', len(ells))
-        pc = mpl.collections.PatchCollection(ells, **kwargs)
+        label = kwargs.pop('label', '')
+        label = '%s; step: %s' % (label, f)
+        pc = mpl.collections.PatchCollection(ells, label=label, **kwargs)
         #pc = mpl.collections.PatchCollection(ells, array=T, **kwargs)
         CS = self.axes.add_collection(pc)
         return CS
@@ -572,11 +633,54 @@ class ASPanelPathPlot(ASPanelWxMPL):
         CS = self.axes.plot(xs, ys, **kwargs)
         return CS
 
-    def plotPlumes(self, plumes):
+    def updatePlumes(self, plumes):
+        """
+        Update plot, activating/deactivating layers
+        """
+        LOGGER.trace('ASPanelPathPlot.updatePlumes: size=%d', len(plumes))
+        dirty = False
+        for layer in self.layers:
+            if layer.plume in plumes:
+                if not layer.isVisible():
+                    for CS in layer.CSS:
+                        self.__append_one_CS(CS)
+                    layer.setVisible(True)
+                    dirty = True
+            else:
+                if layer.isVisible():
+                    for CS in layer.CSS:
+                        self.__remove_one_CS(CS)
+                    layer.setVisible(False)
+        if dirty and self.olPlgCS:
+            self.__remove_one_CS(self.olPlgCS)
+            self.__append_one_CS(self.olPlgCS)
+
+        self.nVisible = len( [1 for layer in self.layers if layer.isVisible()] )
+        if self.nVisible <= ASPanelPathPlot.DATA_CURSOR_NMAX:
+            for dc in self.dataCursors:
+                if dc.layer.isVisible():
+                    dc.activate()
+                else:
+                    dc.deactivate()
+        else:
+            for dc in self.dataCursors:
+                dc.deactivate()
+
+        self.redraw()
+
+    def plotPlumes(self, plumes, draw=True):
+        """
+        Plot everything from scratch
+        """
         LOGGER.trace('ASPanelPathPlot.plotPlumes: size=%d', len(plumes))
         kwPath = {}
-        #kwPath['norm'] = mpl.colors.Normalize(dtini, dtmax)
         kwPath['cmap'] = plt.cm.jet
+        if self.params.pathColorSource == CLR_SRC.TIME:
+            kwPath['norm'] = mpl.colors.Normalize(0, 7*3600)    # Dédoublé avec colo
+        elif self.params.pathColorSource == CLR_SRC.DILUTION:
+            kwPath['norm'] = mpl.colors.Normalize(-6, 0)
+        else:
+            raise ValueError('Invalid color source')
         kwEllp = {}
         kwEllp['color'] = self.params.ellipseColor
         kwEllp['alpha'] = self.params.ellipseAlpha
@@ -590,10 +694,11 @@ class ASPanelPathPlot(ASPanelWxMPL):
 
         hasColor = False
         polys = {}
-        for ip, plume in enumerate(plumes):
-            polys[plume.stationName] = plume.stationPolygon
-            if plume.stationName == 'Root':
-                continue
+        for plume in plumes:
+            polys[plume.parentName] = plume.stationPolygon
+            if plume.stationName == 'Root': continue
+            if not plume.plume: continue
+
             txy = np.array(plume.plume)
             # ---  Indice du temps de contact
             # Les temps sont en epoch par rapport à une référence bâtarde
@@ -613,6 +718,7 @@ class ASPanelPathPlot(ASPanelWxMPL):
                 dt = DT[itx]
                 DT = dt - DT
 
+            layer = ASLayer(plume)
             # ---  Slices X et Y
             X = txy[:itx,1]
             Y = txy[:itx,2]
@@ -620,66 +726,86 @@ class ASPanelPathPlot(ASPanelWxMPL):
             if self.params.pathColorSource == CLR_SRC.TIME:
                 C = DT[:itx] # txy[:itx,0]
             elif self.params.pathColorSource == CLR_SRC.DILUTION:
-                C = np.log(txy[:itx,3])
+                C = np.log10(txy[:itx,3])
             else:
                 raise ValueError('Invalid color source')
             E = txy[:itx,4:]
 
             if self.params.doDrawPath:
-                kwPath['label'] = 'path_id: %06i' % ip
+                kwPath['label'] = 'path_id: %d' % len(self.layers)
                 CS = self.__drawOnePlume(C, X, Y, **kwPath)
-                self.CSS.append(CS)
+                layer.append(CS)
                 hasColor = True
                 if self.params.doPathCursor:
-                    dc = ASDataCursor(CS, formatter=self.dataCursorPathFormatter,  xytext=(5,5))
+                    dc = ASDataCursor(layer, CS, formatter=self.dataCursorPathFormatter,  xytext=(5,5))
                     self.dataCursors.append(dc)
 
             if self.params.doDrawEllipse:
-                kwEllp['label'] = 'path_id: %06i' % ip
+                kwEllp['label'] = 'path_id: %d' % len(self.layers)
                 CS = self.__drawOneEllipses(C, X, Y, E, self.params.ellipseFrequency, **kwEllp)
-                self.CSS.append(CS)
+                layer.append(CS)
                 if self.params.doEllipseCursor:
-                    dc = ASDataCursor(CS, formatter=self.dataCursorEllpsFormatter, xytext=(5,5))
+                    dc = ASDataCursor(layer, CS, formatter=self.dataCursorEllpsFormatter, xytext=(5,5))
                     self.dataCursors.append(dc)
 
+            layer.setVisible(True)
+            self.layers.append(layer)
+
+        self.nVisible = len( [1 for layer in self.layers if layer.isVisible()] )
+
         if self.params.doDrawPolygon and polys:
-            CS = self.__drawPolygons(polys.values(), **kwPoly)
-            self.CSS.append(CS)
+            self.olPlgCS = self.__drawPolygons(polys.values(), **kwPoly)
         if self.params.doDrawColorbar and hasColor:
             self.__plotColorBar()
 
-        self.redraw()
-
-        self.plumes = plumes
+        if draw:
+            self.redraw()
 
 if __name__ == "__main__":
     from ASModel import ASPlume
-    
+    import addLogLevel
+    addLogLevel.addLoggingLevel('DUMP',  logging.DEBUG + 5)
+    addLogLevel.addLoggingLevel('TRACE', logging.DEBUG - 5)
+
     logHndlr = logging.StreamHandler()
     FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     logHndlr.setFormatter( logging.Formatter(FORMAT) )
 
     LOGGER.addHandler(logHndlr)
     LOGGER.setLevel(logging.TRACE)
-    
+
     PRJ_BBLL = (636130, 5185695)    # Project BoundingBox Lower-Left
     PRJ_BBUR = (646190, 5194425)    # Project BoundingBox Upper-Right
 
     app = wx.App()
     fr = wx.Frame(None, title='test')
+    app.SetTopWindow(fr)
+
     fr.SetSize((800, 600))
     panel = ASPanelPathPlot(fr, wx.ID_ANY)
-    panel.params.doDrawEllipse = False
+    bbox = (-71.21568643482382, 46.81088948738244, -71.0811033476305, 46.88727566993671)
+    panel.setBackground(bbox, 'background/BB_map.tif', 'background/BB_rive.shp')
+
+    panel.params.pathColorSource = CLR_SRC.DILUTION
+    panel.params.doDrawEllipse = True
     panel.params.doDrawPolygon = False
-    
-    tnow = datetime.datetime.now()
-    T = np.linspace(0, 1, 50)
+    panel.params.ellipseFrequency = -1
+
+    tn = datetime.datetime.now()
+    tc = tn + datetime.timedelta(seconds=3600)
+    T = np.linspace(0, 3600, 50)
     X = np.linspace(PRJ_BBLL[0], PRJ_BBUR[0], 50)
     Y = np.linspace(PRJ_BBLL[1], PRJ_BBUR[1], 50)
-    TXY = np.stack((T, X, Y), axis=-1)
-    plume = ASPlume(dilution=1.0e-03, name='tt', poly=None, tide=(), t0=tnow, tc=tnow, isDirect=False, plume=TXY)
+    C = np.linspace(1.0, 1.0e-6, 50)
+    E1= np.linspace(50, 500, 50)
+    E2= np.linspace(50, 500, 50)
+    E3= np.linspace(0, 0, 50)
+    TXY = np.stack((T, X, Y, C, E1, E2, E3), axis=-1)
+    TXYl = list(TXY)
+    plume = ASPlume(dilution=1.0e-03, name='tt', poly=None, tide=(), t0=tn, tc=tc, isDirect=True, plume=TXYl)
 
-    panel.plotPlumes([plume])
-    #panel.redraw()
+    panel.plotPlumes  ([plume], draw=True)
+    panel.updatePlumes([plume])
+
     fr.Show()
     app.MainLoop()

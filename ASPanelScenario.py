@@ -131,6 +131,11 @@ class ASDuration(wx.Control):
         self.__do_layout(spacer=spacer)
 
     def __set_properties(self):
+        # dt = datetime.datetime(2019, 2, 18, 16, 31)
+        # dt = LOCAL_TZ.localize(dt)
+        # dt = dt.astimezone(pytz.utc)
+        # self.start.setTime(dt)
+        # self.end.setTime(dt)
         pass
 
     def __do_layout(self, spacer=20):
@@ -233,7 +238,7 @@ class ASPanelScenario(wx.Panel):
 
         Args:
             bbModels (list):    List of models
-            bbTides (list):     List of activ tides
+            bbTides  (list):    List of active tides
             addTides (bool):    True to add tides
 
          Returns:
@@ -315,12 +320,11 @@ class ASPanelScenario(wx.Panel):
                 tides = item.GetData()['tides']
                 dt1 = self.tree.GetItemWindow(item, 1).getTIni()
                 dt2 = self.tree.GetItemWindow(item, 1).getTFin()
-                if tides:
-                    res = [ Overflow(item.GetData()['id'], dt1, dt2, tides) ]
+                res = [ Overflow(item.GetData()['id'], dt1, dt2, tides) ]
         elif lvl == 3:
             if item.IsChecked():
                 res = [ item.GetText() ]
-        LOGGER.trace('getPoints() checked points: %s', res)
+        LOGGER.trace('getPoints() checked points: %s', [r.name for r in res])
         return res
 
     def getPointsChecked(self):
@@ -340,7 +344,7 @@ class ASPanelScenario(wx.Panel):
     def setNode3State(node):
         """
         Set the tree state. According to the number of selected
-        childrens, a node will be checked, unchecked or undetermined.
+        children, a node will be checked, unchecked or undetermined.
         """
         nCheck = 0
         nChild = 0
@@ -358,12 +362,13 @@ class ASPanelScenario(wx.Panel):
                 else:
                     node.Set3StateValue(wx.CHK_UNDETERMINED)
                     nCheck = .5
-            except Exception:
+            except:
                 pass
         else:
             nChild = 1
             if node.IsChecked():
                 nCheck = 1
+            node.GetWindow(1).Enable(node.IsChecked())
         return nCheck/nChild
 
     @staticmethod
@@ -395,13 +400,13 @@ class ASPanelScenario(wx.Panel):
         
     def onTreeCheck(self, event):
         """
-        Handler for event tree check, call when an item in the tree
+        Handler for event tree check, called when an item in the tree
         is checked/unchecked. The state of the tree will be modified to
         reflect the selection.
         """
-        item = event.GetItem()
+        node = event.GetItem()
         try:
-            self.tree.GetItemWindow(item, 1).Enable(item.IsChecked())
+            self.tree.GetItemWindow(node, 1).Enable(node.IsChecked())
         except AttributeError:  # level 1 nodes have no ItemWindow
             pass    
         # ---

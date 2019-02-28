@@ -38,6 +38,7 @@ class ASModel:
         La fonction __init__() construit un objet ASModel. Elle configure le système.
         """
         self.m_rivers = Rivers()
+        LOGGER.debug('ASModel: %s', dataDir)
         self.m_rivers.load(dataDir)
 
         self.m_points = OverflowPoints()
@@ -108,9 +109,10 @@ class ASModel:
         ]
         Tous les temps sont UTC.
         """
+        LOGGER.trace('ASModel.getOverflowData')
         assert isinstance(dt,           datetime.timedelta)
         assert isinstance(overflows,    (list, tuple))
-        assert isinstance(overflows[0], Overflow)
+        assert len(overflows) == 0 or isinstance(overflows[0], Overflow)
 
         res = []
         for o in overflows:
@@ -133,14 +135,16 @@ class ASModel:
         ]
         Tous les temps sont UTC.
         """
+        LOGGER.trace('ASModel.getOverflowPlumes')
         assert isinstance(dt,           datetime.timedelta)
         assert isinstance(overflows,    (list, tuple))
-        assert isinstance(overflows[0], Overflow)
+        assert len(overflows) == 0 or isinstance(overflows[0], Overflow)
 
         res = []
         for o in overflows:
             try:
                 p = self.m_points[o.name]
+                LOGGER.debug('%s - %s', str(o), str(p))
                 r = p.doPlumes(o.tini, o.tend, dt, self.m_tide, tide_cycles=o.tides)
 
                 res.extend(r)

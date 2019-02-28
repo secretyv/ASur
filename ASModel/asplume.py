@@ -24,6 +24,9 @@ import logging
 
 LOGGER = logging.getLogger("INRS.ASModel.plume")
 
+# ---  Cython doesn't support class static attributes. Use a global variable
+PLUME_CTR = 1
+
 class ASPlume:
     """
     Structure to hold all information pertaining to a
@@ -32,20 +35,31 @@ class ASPlume:
     def __init__(self, 
                  dilution=-1.0, 
                  name='', 
+                 parent='', 
                  poly=[], 
                  tide=(-1,-1), 
                  t0=datetime.now(),
                  tc=datetime.now(), 
                  isDirect=False, 
                  plume=None):
+        global PLUME_CTR
         self.dilution       = dilution  # 
         self.stationName    = name      # string
+        self.parentName     = parent    # string
         self.stationPolygon = poly      # sequence of (x, y) 
         self.tide           = tide      # (tide duration [s], tide amplitude [m])
         self.injectionTime  = t0        # datetime
         self.contactTime    = tc        # datetime
         self.isPlumeDirect  = isDirect  # Bool
         self.plume          = plume
+        self.plumeId        = PLUME_CTR
+        PLUME_CTR += 1
+
+    def __lt__(self, other):
+        """
+        Opérateur d’ordonnancement
+        """
+        return self.plumeId < other.plumeId
 
     def __str__(self):
         return 'Station: %s; tide: %s; t0: %s' % (self.stationName, self.tide, self.injectionTime)
@@ -54,6 +68,7 @@ class ASPlume:
         s = []
         s.append('%.2e' % self.dilution)
         s.append('%s' % self.stationName)
+        s.append('%s' % self.parentName)
         s.append('%s' % (self.tide,))
         s.append(':')
         s.append('t_inj=%s' % self.injectionTime)

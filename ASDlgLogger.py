@@ -3,6 +3,7 @@
 #************************************************************************
 # --- Copyright (c) INRS 2018
 # --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -31,11 +32,19 @@ zones = [
 "INRS.ASur",
 "INRS.ASur.frame",
 "INRS.ASur.panel.path",
+"INRS.ASur.panel.path.plot",
+"INRS.ASur.panel.path.tree",
 "INRS.ASur.panel.plot",
 "INRS.ASur.panel.scenario",
+"INRS.H2D2",
+"INRS.H2D2.Tools",
+"INRS.H2D2.Tools.ImageProcessor",
+"INRS.H2D2.Tools.ImageProcessor.GDAL",
 ]
 
 levels = [
+"error",
+"warning",
 "info",
 "debug",
 "trace",
@@ -99,9 +108,11 @@ class ASDlgLogZone(wx.Dialog):
 
     def on_btn_ok(self, event):
         event.Skip()
+        #self.EndModal(wx.ID_OK)
 
     def on_btn_cancel(self, event):
-        self.Destroy()
+        event.Skip()
+        #self.EndModal(wx.ID_CANCEL)
 
 if __name__ == "__main__":
     class MyApp(wx.App):

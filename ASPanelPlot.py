@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #************************************************************************
-# --- Copyright (c) INRS 2016-2018
+# --- Copyright (c) INRS 2016
 # --- Institut National de la Recherche Scientifique (INRS)
+# --- Copyright (c) Yves Secretan 2018
 # ---
 # --- Licensed under the Apache License, Version 2.0 (the "License");
 # --- you may not use this file except in compliance with the License.
@@ -289,7 +290,7 @@ class ASPanelPlot(ASPanelWxMPL):
         kwargs['linewidth'] = 1.5
         kwargs['color']     = '#C0C0C0'   # light gray
         kwargs['marker']    = None
-        self.axes.axvline(dtmin, **kwargs, label='Fenêtre de surverse')
+        self.axes.axvline(dtmin, label='Fenêtre de surverse', **kwargs)
         self.axes.axvline(dtmax, **kwargs)
 
     def __plotColorBar(self):

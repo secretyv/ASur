@@ -22,13 +22,14 @@
 """
 """
 
+import os
 if __name__ == "__main__":
-    import os
     import sys
     supPath = r'E:\bld-1810\H2D2-tools\script'
     if os.path.isdir(supPath) and supPath not in sys.path: sys.path.append(supPath)
 
 import logging    
+import traceback
 
 import wx
 
@@ -73,19 +74,41 @@ class ASPanelPath(wx.Panel):
             raise
 
     def onTreeCheck(self):
+        LOGGER.trace(".".join([os.path.splitext(__file__)[0], "onTreeCheck"]))
+        wx.BeginBusyCursor()
         try:
-            plumes = self.pnlCtrl.getCheckedItems()
-        except AttributeError:  # provision for empty tree
-            plumes = []
-        self.pnlPath.plotPlumes(plumes)
+            try:
+                plumes = self.pnlCtrl.getCheckedItems()
+            except AttributeError:  # provision for empty tree
+                plumes = []
+            self.pnlPath.updatePlumes(plumes)
+        finally:
+            wx.EndBusyCursor()
     
     def plotPaths(self, asurMdl, plumes, dtini, dtfin, dtmax):
-        self.pnlPath.plotPlumes(plumes)
-        self.pnlCtrl.fillTree  (plumes)
+        LOGGER.trace(".".join([os.path.splitext(__file__)[0], "plotPaths"]))
+        wx.BeginBusyCursor()
+        try:
+            self.pnlCtrl.fillTree  (plumes)
+            #import cProfile as profile
+            #profile.runctx("self.pnlPath.plotPlumes(plumes, draw=True)", globals(), locals())
+            self.pnlPath.plotPlumes(plumes, draw=True)
+        except Exception as e:
+            errMsg = '%s\n%s' % (str(e), traceback.format_exc())
+            LOGGER.error(errMsg)
+        finally:
+            wx.EndBusyCursor()
 
     def setParameters(self, prm):
-        self.pnlPath.params = prm
-        self.onTreeCheck()
+        LOGGER.trace(".".join([os.path.splitext(__file__)[0], "setParameters"]))
+        wx.BeginBusyCursor()
+        try:
+            self.pnlPath.params = prm
+            plumes = self.pnlCtrl.getAllItems()
+            self.pnlPath.plotPlumes(plumes, draw=False)
+            self.onTreeCheck()
+        finally:
+            wx.EndBusyCursor()
         
 if __name__ == "__main__":
     class MyDialogBox(wx.Dialog):

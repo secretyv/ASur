@@ -33,6 +33,7 @@ import traceback
 
 try:
     import addLogLevel
+    addLogLevel.addLoggingLevel('DUMP',  logging.DEBUG + 5)
     addLogLevel.addLoggingLevel('TRACE', logging.DEBUG - 5)
 except AttributeError:
     pass
@@ -43,15 +44,21 @@ import wx.lib.wordwrap as wx_ww
 import wx.aui          as wx_AUI
 import wx.html         as wx_html
 
-try:
-    supPath = os.path.join( os.environ['INRS_DEV'], 'H2D2-tools', 'script'  )
-except KeyError:
-    supPath = os.path.normpath( os.environ['INRS_H2D2_TOOLS'] )
+if getattr(sys, 'frozen', False):
+    supPath = sys._MEIPASS
+else:
+    try:
+        supPath = os.path.join( os.environ['INRS_DEV'], 'H2D2-tools', 'script'  )
+    except KeyError:
+        try:
+            supPath = os.path.normpath( os.environ['INRS_H2D2_TOOLS'] )
+        except KeyError:
+            supPath = 'Neither INRS_DEV nor INRS_H2D2_TOOLS defined'
 if os.path.isdir(supPath):
     if supPath not in sys.path:
         sys.path.append(supPath)
 else:
-    raise
+    raise RuntimeError('Supplementary import path not found: "%s"' % supPath)
 
 from __about__ import __author__, __version__, __copyright__
 from ASGlobalParameters import ASGlobalParameters
@@ -60,7 +67,7 @@ from ASPanelPlot      import ASPanelPlot
 from ASPanelPath      import ASPanelPath
 from ASPathParameters import ASPathParameters, CLR_SRC, ELL_STL
 from ASTranslator     import translator
-from ASEvents         import ASEVT_MOTION, ASEVT_BUTTON
+from ASEvents         import ASEVT_MESSAGE, ASEVT_MOTION, ASEVT_BUTTON
 from ASConst          import DATE_MIN, DATE_MAX, LOCAL_TZ
 import ASDlgLogger
 import ASDlgParamGlobal
@@ -68,7 +75,7 @@ import ASDlgParamPath
 import ASDlgTides
 import ASModel
 
-#--- Help provider for contexutal help (broken!!)
+#--- Help provider for contextual help (broken!!)
 # provider = wx.SimpleHelpProvider()
 # wx.HelpProvider.Set(provider)
 
@@ -111,6 +118,7 @@ class ASur(wx.Frame):
     CLC_DELTAT = datetime.timedelta(seconds=CLC_DELTAS)
 
     # ID_MDL = [ wx.Window.NewControlId() for i in range(9)]
+    TIMER_ID_MSG = 1000
 
     def __init__(self, *args, **kwds):
         self.appMode = kwds.pop("appMode", GlbModes.standard)
@@ -133,6 +141,7 @@ class ASur(wx.Frame):
         self.dlgHelp   = None
         self.dlgParamPath = None # ASDlgParamPath.ASDlgParamPath(None)
         self.statusbar = self.CreateStatusBar(2)
+        self.tmrMsg    = wx.Timer(self, ASur.TIMER_ID_MSG)
 
         self.histCfg = wx.Config('ASur - File history', style=wx.CONFIG_USE_LOCAL_FILE)
         self.prmsCfg = wx.Config('ASur - Parameters',   style=wx.CONFIG_USE_LOCAL_FILE)
@@ -146,7 +155,7 @@ class ASur(wx.Frame):
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_open,  self.mnu_file_open)
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_add,   self.mnu_file_add)
         self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_hist, id=wx.ID_FILE1, id2=wx.ID_FILE9)
-        # TODO : il faut regenerer les ID à chaque appel
+        # TODO : il faut regénérer les ID à chaque appel
         # self.Bind(wx.EVT_MENU_RANGE,self.on_mnu_file_xone, id=self.ID_MDL[0], id2=self.ID_MDL[-1])
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_close, self.mnu_file_close)
         self.Bind(wx.EVT_MENU,      self.on_mnu_file_quit,  self.mnu_file_quit)
@@ -168,7 +177,9 @@ class ASur(wx.Frame):
         self.Bind(wx.EVT_TOOL,      self.on_btn_zsl,        self.btn_zsl)
 
         self.Bind(wx_AUI.EVT_AUINOTEBOOK_PAGE_CHANGED, self.on_page_change, self.nbk_dspl)
-        self.Bind(ASEVT_MOTION, self.cb_panel)
+        self.Bind(wx.EVT_TIMER,  self.cb_panel_message_clear, self.tmrMsg)
+        self.Bind(ASEVT_MESSAGE, self.cb_panel_message)
+        self.Bind(ASEVT_MOTION,  self.cb_panel_motion)
         #self.Bind(ASEVT_BUTTON, self.on_btn_parm_path)
 
         self.mnu_states = {
@@ -283,7 +294,7 @@ class ASur(wx.Frame):
         self.mnu_parm = wx.Menu()
         self.mnu_parm_maree = wx.MenuItem(self.mnu_parm, wx.ID_ANY, 'Marées...\tCTRL+M', 'Sélectionner les marées prise en compte dans le calcul', wx.ITEM_NORMAL)
         self.mnu_parm.Append(self.mnu_parm_maree)
-        self.mnu_parm_path  = wx.MenuItem(self.mnu_parm, wx.ID_ANY, 'Panaches...\tCTRL+T', 'Sélectionner TODO: A_COMPLETER', wx.ITEM_NORMAL)
+        self.mnu_parm_path  = wx.MenuItem(self.mnu_parm, wx.ID_ANY, 'Panaches...\tCTRL+T', 'Paramètres de tracé des panaches et ellipses', wx.ITEM_NORMAL)
         self.mnu_parm.Append(self.mnu_parm_path)
         self.mnu_parm_glbx  = wx.MenuItem(self.mnu_parm, wx.ID_ANY, 'Globaux...', 'Paramètre globaux', wx.ITEM_NORMAL)
         self.mnu_parm.Append(self.mnu_parm_glbx)
@@ -604,8 +615,8 @@ class ASur(wx.Frame):
                         dtmax = max(dtmax, dtmax_)
                     self.pnl_asur.plotZoom(self.bbModels[0], dtaGlb, dtini, dtfin, dtmax, title='Différentes marées - Différentes dilutions')
             except Exception as e:
-                errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-                #errMsg = '%s' % str(e)
+                self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                errMsg = str(e)
             finally:
                 wx.EndBusyCursor()
 
@@ -714,8 +725,8 @@ class ASur(wx.Frame):
 
             self.__set_state(GlbStates.data_loaded, BtnStates.on)
         except Exception as e:
-            errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-            #errMsg = '%s' % str(e)
+            self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+            errMsg = str(e)
         finally:
             wx.EndBusyCursor()
 
@@ -725,17 +736,16 @@ class ASur(wx.Frame):
             dlg.Destroy()
 
     def __do_mnu_open(self, dirname):
-        # ---  Check if allready open
+        # ---  Check if already open
         for bbModel in self.bbModels:
             if dirname == bbModel.getDataDir():
                 return
         # ---  Construct model
+        self.LOGGER.trace('__do_mnu_open: %s', dirname)
         self.bbModels.append( ASModel.ASModel(dirname) )
         self.bbModels.sort(key = ASModel.ASModel.getDataDir)
-        # ---  Fill activ cycles list
+        # ---  Fill active cycles list
         self.bbCycles = self.__getAllActivCycles()
-        # ---  Fill list
-        self.__fillPoints()
         # ---  Set title
         #dn = os.path.basename(dirname)
         #self.SetTitle("%s - %s" % (appTitle, dn))
@@ -749,23 +759,31 @@ class ASur(wx.Frame):
     def on_mnu_file_open(self, event):
         errMsg = ''
         dlg = wx.DirDialog(self, 'Répertoire des données', self.dirname)
-        if (dlg.ShowModal() == wx.ID_OK):
+        if dlg.ShowModal() == wx.ID_OK:
             dirname = dlg.GetPath()
             if (len(dirname) > 0):
                 wx.BeginBusyCursor()
                 try:
-                    self.bbModels = []
-                    subdirs = next(os.walk(dirname))[1]
-                    if subdirs:
-                        for subdir in subdirs:
-                            fullpath = os.path.join(dirname, subdir)
-                            self.__do_mnu_open(fullpath)
+                    mdldirs = []
+                    root, subdirs, files = next(os.walk(dirname))
+                    if "overflow.tide.txt" in files:
+                        mdldirs.append(dirname)
+                    for subdir in subdirs:
+                        fullpath = os.path.join(dirname, subdir)
+                        files = next(os.walk(fullpath))[2]
+                        if "overflow.tide.txt" in files:
+                            mdldirs.append(fullpath)
+                    if mdldirs:
+                        self.bbModels = []
+                        for mdldir in mdldirs:
+                            self.__do_mnu_open(mdldir)
+                        self.__fillPoints()
+                        self.__fillModelMenu()
                     else:
-                        self.__do_mnu_open(dirname)
-                    self.__fillModelMenu()
+                        errMsg = "%s ne comprend aucun répertoire de données valide" % dirname
                 except Exception as e:
-                    errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-                    #errMsg = str(e)
+                    self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                    errMsg = str(e)
                 finally:
                     wx.EndBusyCursor()
             else:
@@ -779,16 +797,17 @@ class ASur(wx.Frame):
     def on_mnu_file_add(self, event):
         errMsg = ''
         dlg = wx.DirDialog(self, 'Répertoire des données à ajouter', self.dirname)
-        if (dlg.ShowModal() == wx.ID_OK):
+        if dlg.ShowModal() == wx.ID_OK:
             dirname = dlg.GetPath()
             if (len(dirname) > 0):
                 wx.BeginBusyCursor()
                 try:
                     self.__do_mnu_open(dirname)
+                    self.__fillPoints()
                     self.__fillModelMenu()
                 except Exception as e:
-                    errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-                    #errMsg = str(e)
+                    self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                    errMsg = str(e)
                 finally:
                     wx.EndBusyCursor()
             else:
@@ -803,15 +822,16 @@ class ASur(wx.Frame):
         errMsg = ''
         fileNum = event.GetId() - wx.ID_FILE1
         dirname = self.history.GetHistoryFile(fileNum)
-        if (len(dirname) > 0):
+        if len(dirname) > 0:
             wx.BeginBusyCursor()
             try:
                 self.__do_mnu_open(dirname)
+                self.__fillPoints()
                 self.__fillModelMenu()
             except Exception as e:
                 self.history.RemoveFileFromHistory(fileNum)
-                errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-                #errMsg = str(e)
+                self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                errMsg = str(e)
             finally:
                 wx.EndBusyCursor()
         else:
@@ -829,7 +849,7 @@ class ASur(wx.Frame):
         errMsg = ''
         mnuItem = self.bbmdl_mnu.FindItemById(event.GetId())
         dirname = mnuItem.GetHelp()
-        if (len(dirname) > 0):
+        if len(dirname) > 0:
             wx.BeginBusyCursor()
             try:
                 bbModel = next(b for b in self.bbModels if b.getDataDir() == dirname)
@@ -840,8 +860,8 @@ class ASur(wx.Frame):
                 if not self.bbModels:
                     self.__set_state(GlbStates.started, BtnStates.off)
             except Exception as e:
-                errMsg = '%s\n%s' % (str(e), traceback.format_exc())
-                #errMsg = str(e)
+                self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
+                errMsg = str(e)
             finally:
                 wx.EndBusyCursor()
         else:
@@ -854,27 +874,30 @@ class ASur(wx.Frame):
 
     def on_mnu_file_close(self, event):
         dlg = wx.MessageDialog(self, ' Êtes-vous sûr(e)? \n', 'Fermer', wx.YES_NO)
-        if (dlg.ShowModal() == wx.ID_YES):
+        if dlg.ShowModal() == wx.ID_YES:
             self.bbModels = []
             self.__fillPoints()
             self.__fillModelMenu()
             self.__set_state(GlbStates.started, BtnStates.off)
+        dlg.Destroy()
 
     def on_mnu_file_quit(self, event):
         dlg = wx.MessageDialog(self, ' Êtes-vous sûr(e)? \n', 'Fermer', wx.YES_NO)
         if (dlg.ShowModal() == wx.ID_YES):
             self.bbModels = []
             self.Close(True)
+        dlg.Destroy()
 
     def on_mnu_parm_maree(self, event):
         errMsg = None
+        dlg = None
         try:
             allCycles = self.__getAllCycles()
             atvCycles = self.__getAllActivCycles()
             dlg = ASDlgTides.ASDlgTides(self)
             dlg.setItems  (allCycles)
             dlg.checkItems(atvCycles)
-            if (dlg.ShowModal() == wx.ID_OK):
+            if dlg.ShowModal() == wx.ID_OK:
                 atvCycles = dlg.getCheckedItems()
 
                 self.prmsCfg.DeleteGroup('/ActivCycles')
@@ -884,10 +907,12 @@ class ASur(wx.Frame):
 
                 self.bbCycles = self.__getAllActivCycles()
                 self.__fillPoints()
-            dlg.Destroy()
         except Exception as e:
             self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
             errMsg = str(e)
+        finally:
+            if dlg:
+                dlg.Destroy()
         if errMsg:
             dlg = wx.MessageDialog(self, errMsg, 'Erreur', wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
@@ -900,13 +925,16 @@ class ASur(wx.Frame):
             # self.Bind(ASEVT_BUTTON, self.on_btn_parm_path) #, self.dlgParamPath)
             prm = self.pnl_slin.getParameters()
             self.dlgParamPath.setParameters(prm)
-            if (self.dlgParamPath.ShowModal() == wx.ID_OK):
+            ret = self.dlgParamPath.ShowModal()
+            if ret == wx.ID_OK:
                 self.on_btn_parm_path(None)
-            self.dlgParamPath.Destroy()
-            self.dlgParamPath = None
         except Exception as e:
             self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
             errMsg = str(e)
+        finally:
+            if self.dlgParamPath:
+                self.dlgParamPath.Destroy()
+                self.dlgParamPath = None
         if errMsg:
             dlg = wx.MessageDialog(self, errMsg, 'Erreur', wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
@@ -925,13 +953,14 @@ class ASur(wx.Frame):
             
     def on_mnu_parm_glbx(self, event):
         errMsg = None
+        dlg = None
         try:
             prm = self.__getGlobalParameters()
             dlg = ASDlgParamGlobal.ASDlgParamGlobal(self)
             dlg.setParameters(prm)
-            if (dlg.ShowModal() == wx.ID_OK):
+            if dlg.ShowModal() == wx.ID_OK:
                 prm = dlg.getParameters()
-                
+
                 self.prmsCfg.DeleteGroup('/GlobalParameters')
                 for item in prm.iterOnAttributeNames():
                     self.prmsCfg.Write('/GlobalParameters/%s' % item, str(getattr(prm, item)))
@@ -939,9 +968,12 @@ class ASur(wx.Frame):
 
                 translator.loadFromFile(prm.fileTrnsl)
                 self.pnl_slin.setBackground(prm.projBbox, prm.fileBgnd, prm.fileShore)
-            dlg.Destroy()
         except Exception as e:
+            self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
             errMsg = str(e)
+        finally:
+            if dlg:
+                dlg.Destroy()
         if errMsg:
             dlg = wx.MessageDialog(self, errMsg, 'Erreur', wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
@@ -972,7 +1004,14 @@ class ASur(wx.Frame):
     def on_mnu_help_log(self, event):
         dlg = ASDlgLogger.ASDlgLogZone(self)
         if dlg.ShowModal() == wx.ID_OK:
-            LVLS = {'info' : logging.INFO, 'debug': logging.DEBUG, 'trace': logging.TRACE}
+            LVLS = {
+                'critical' : logging.CRITICAL, 
+                'error'    : logging.ERROR, 
+                'warning'  : logging.WARNING, 
+                'info'     : logging.INFO, 
+                'debug'    : logging.DEBUG, 
+                'trace'    : logging.TRACE
+                }
             z, l = dlg.getValues()
             self.LOGGER.removeHandler(self.logHndlr)
             self.LOGGER = logging.getLogger(z)
@@ -1003,7 +1042,16 @@ class ASur(wx.Frame):
         infoDlg.License     = wx_ww.wordwrap(licTxt, 450, wx.ClientDC(self))
         wx_adv.AboutBox(infoDlg)
 
-    def cb_panel(self, evt):
+    def cb_panel_message(self, evt):
+        txt = evt.text    if hasattr(evt, 'text')    else ""
+        tmr = evt.timeout if hasattr(evt, 'timeout') else 1
+        self.statusbar.SetStatusText(txt, 0)
+        self.tmrMsg.Start(int(tmr*1000))
+        
+    def cb_panel_message_clear(self, evt):
+        self.statusbar.SetStatusText('Status', 0)
+    
+    def cb_panel_motion(self, evt):
         xy = evt.xy if hasattr(evt, 'xy') else ()
         ll = evt.ll if hasattr(evt, 'll') else ()
         th = evt.th if hasattr(evt, 'th') else ()
@@ -1030,7 +1078,7 @@ class ASur(wx.Frame):
             s = ' : '.join(s)
             self.statusbar.SetStatusText('Position: %s' % s, 1)
         except Exception as e:
-            print(str(e))
+            self.LOGGER.error('%s\n%s', str(e), traceback.format_exc())
             pass
 
 """
