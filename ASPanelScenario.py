@@ -324,7 +324,7 @@ class ASPanelScenario(wx.Panel):
         elif lvl == 3:
             if item.IsChecked():
                 res = [ item.GetText() ]
-        LOGGER.trace('getPoints() checked points: %s', [r.name for r in res])
+        LOGGER.trace('getPoints() checked points: %s', [r for r in res])
         return res
 
     def getPointsChecked(self):
@@ -368,7 +368,8 @@ class ASPanelScenario(wx.Panel):
             nChild = 1
             if node.IsChecked():
                 nCheck = 1
-            node.GetWindow(1).Enable(node.IsChecked())
+            if node.GetWindow(1):
+                node.GetWindow(1).Enable(node.IsChecked())
         return nCheck/nChild
 
     @staticmethod
