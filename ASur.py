@@ -129,7 +129,7 @@ class ASur(wx.Frame):
         self.logHndlr.setFormatter( logging.Formatter(FORMAT) )
         self.LOGGER = logging.getLogger("INRS.ASur") # .frame")
         self.LOGGER.addHandler(self.logHndlr)
-        self.LOGGER.setLevel(logging.INFO)
+        self.LOGGER.setLevel(logging.DEBUG if self.appMode == GlbModes.debug else logging.INFO)
         self.LOGGER.info('Start')
 
         wx.Frame.__init__(self, *args, **kwds)
